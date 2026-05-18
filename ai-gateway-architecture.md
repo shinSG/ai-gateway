@@ -274,37 +274,41 @@ ai-gateway/
 - 服务健康检查
 - 元数据管理与向量化
 
-**资源类型枚举：**
+**服务类型枚举：**
+
+向 Nacos 注册 AI 服务时，统一使用 `ServiceType` 枚举标识服务类型。每种服务类型对应一种接入协议，注册时不再按资源类型（Agent/Skill/Plugin/Model）和协议类型分别注册，而是以服务类型为统一维度。
 
 ```java
 /**
- * 资源类型枚举
+ * 服务类型枚举
+ * 向 Nacos 注册时，所有 AI 服务统一归类为以下四种类型之一
  */
-public enum ResourceType {
-    AGENT("Agent智能体", "具有自主决策能力的AI组件"),
-    SKILL("Skill技能", "特定领域的AI能力单元"),
-    PLUGIN("Plugin插件", "可扩展的功能模块"),
-    MODEL("Model模型", "大语言模型或专用模型服务");
-    
+public enum ServiceType {
+    API("REST API 服务", "标准 RESTful 接口，支持 HTTP/HTTPS 协议接入"),
+    MCP("MCP 服务", "Model Context Protocol 服务，提供工具调用、资源访问等能力"),
+    ACP("ACP 服务", "Agent Communication Protocol 服务，支持 Agent 间通信与协作"),
+    A2A("A2A 服务", "Agent-to-Agent 服务，基于 Google A2A 协议的 Agent 间通信");
+
+    private final String name;
     private final String description;
-    private final String detail;
 }
 ```
 
-**协议类型枚举：**
+**服务类型与内部角色的对应关系：**
+
+每种 `ServiceType` 下可以承载不同的 AI 内部角色（Agent/Skill/Plugin/Model），通过元数据中的 `role` 字段区分：
 
 ```java
 /**
- * 协议类型枚举
+ * 服务角色枚举
+ * 标识 AI 服务在系统中的内部角色，用于路由匹配和能力发现
  */
-public enum ProtocolType {
-    API("REST API", "标准RESTful接口"),
-    GRPC("gRPC", "高性能RPC协议"),
-    MCP("Model Context Protocol", "模型上下文协议，用于工具调用"),
-    A2A("Agent-to-Agent", "Agent间通信协议"),
-    WEBSOCKET("WebSocket", "长连接协议"),
-    SSE("Server-Sent Events", "服务器推送事件");
-    
+public enum ServiceRole {
+    AGENT("智能体", "具有自主决策能力的 AI 组件"),
+    SKILL("技能", "特定领域的 AI 能力单元"),
+    PLUGIN("插件", "可扩展的功能模块"),
+    MODEL("模型", "大语言模型或专用模型服务");
+
     private final String name;
     private final String description;
 }
@@ -338,12 +342,12 @@ spring:
 
 | 元数据 Key | 类型 | 必填 | 说明 |
 |-----------|------|------|------|
-| resourceId | String | 是 | 资源唯一标识 (UUID) |
-| resourceType | String | 是 | 资源类型: AGENT/SKILL/PLUGIN/MODEL |
-| name | String | 是 | 资源名称 |
-| version | String | 是 | 资源版本 |
-| description | String | 否 | 资源描述 |
-| protocolType | String | 是 | 协议类型: API/MCP/A2A/GRPC/WEBSOCKET/SSE |
+| resourceId | String | 是 | 服务唯一标识 (UUID) |
+| serviceType | String | 是 | 服务类型: API/MCP/ACP/A2A |
+| role | String | 否 | 服务角色: AGENT/SKILL/PLUGIN/MODEL |
+| name | String | 是 | 服务名称 |
+| version | String | 是 | 服务版本 |
+| description | String | 否 | 服务描述 |
 | serviceAddress | String | 是 | 服务地址 (host:port 或 URL) |
 | capabilities | String | 否 | 能力标签列表 (JSON Array) |
 | tags | String | 否 | 标签 (JSON Map) |
@@ -355,15 +359,15 @@ spring:
 
 **Nacos 元数据扩展字段前缀规范：**
 
-| 前缀 | 用途 | 说明 |
-|------|------|------|
-| agent.* | Agent 专用字段 | Agent 类型、能力定义、工具列表等 |
-| skill.* | Skill 专用字段 | Skill 类型、输入输出参数等 |
-| plugin.* | Plugin 专用字段 | Plugin 类型、配置参数等 |
-| model.* | Model 专用字段 | 模型类型、能力、资源需求、定价等 |
-| mcp.* | MCP 协议专用字段 | MCP 服务器能力、工具、资源等 |
-| a2a.* | A2A 协议专用字段 | Agent Card、任务类型、认证等 |
-| api.* | API 协议专用字段 | API 类型、限流配置等 |
+根据 `serviceType` 的不同，使用对应的前缀存放协议特定字段。每种服务类型使用独立的前缀命名空间，不再按 Agent/Skill/Plugin/Model 划分前缀。
+
+| 前缀 | 适用 serviceType | 用途 | 说明 |
+|------|-----------------|------|------|
+| api.* | API | REST API 服务配置 | API 类型、认证方式、限流配置、请求示例等 |
+| mcp.* | MCP | MCP 协议配置 | 协议版本、传输类型、工具列表、资源列表、提示模板等 |
+| acp.* | ACP | ACP 协议配置 | Agent 通信协议版本、能力声明、消息格式等 |
+| a2a.* | A2A | A2A 协议配置 | Agent Card、任务类型、输入输出模式、认证配置等 |
+| role.* | 全部 | 服务角色信息 | 内部角色类型、角色专属配置（如 Agent 的工具列表、Model 的定价信息等） |
 
 ---
 
@@ -494,11 +498,12 @@ public enum RouteStrategy {
 
 ### 4.1 通用元数据结构
 
-所有资源类型共享的基础元数据结构：
+所有 AI 服务共享的基础元数据结构。注册时以 `serviceType`（API/MCP/ACP/A2A）为统一维度，`role` 字段标识服务在系统中的内部角色（Agent/Skill/Plugin/Model），不再将资源类型和协议类型分开定义。
 
 ```java
 /**
  * 基础元数据结构
+ * 所有 AI 服务注册到 Nacos 时共享的通用字段
  */
 @Data
 @Builder
@@ -507,34 +512,35 @@ public enum RouteStrategy {
 public class BaseMetadata {
     
     /**
-     * 资源唯一标识
+     * 服务唯一标识 (UUID)
      */
     private String resourceId;
     
     /**
-     * 资源名称
+     * 服务类型: API / MCP / ACP / A2A
+     */
+    private ServiceType serviceType;
+    
+    /**
+     * 服务角色: AGENT / SKILL / PLUGIN / MODEL
+     * 标识该服务在系统中的内部角色，用于语义路由匹配
+     */
+    private ServiceRole role;
+    
+    /**
+     * 服务名称
      */
     private String name;
     
     /**
-     * 资源描述
+     * 服务描述
      */
     private String description;
     
     /**
-     * 资源版本
+     * 服务版本
      */
     private String version;
-    
-    /**
-     * 资源类型
-     */
-    private ResourceType resourceType;
-    
-    /**
-     * 协议类型
-     */
-    private ProtocolType protocolType;
     
     /**
      * 服务地址 (host:port 或 URL)
@@ -577,214 +583,31 @@ public class BaseMetadata {
     private LocalDateTime updateTime;
     
     /**
-     * 扩展元数据
-     */
-    private Map<String, Object> extensions;
-}
-```
-
-### 4.2 Agent 资源元数据
-
-```java
-/**
- * Agent 元数据定义
- */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
-public class AgentMetadata extends BaseMetadata {
-    
-    /**
-     * Agent 类型
-     */
-    private AgentType agentType;
-    
-    /**
-     * Agent 描述信息 (用于语义路由)
-     */
-    private AgentDescription agentDescription;
-    
-    /**
-     * 能力定义
-     */
-    private AgentCapabilityDefinition capabilities;
-    
-    /**
-     * 工具列表 (Agent 可调用的工具)
-     */
-    private List<ToolDefinition> tools;
-    
-    /**
-     * 协议配置
+     * 协议配置 (按 serviceType 类型存放对应的协议配置)
      */
     private ProtocolConfig protocolConfig;
     
     /**
-     * 部署配置
+     * 角色配置 (按 role 类型存放对应的角色专属配置)
      */
-    private DeploymentConfig deploymentConfig;
+    private RoleConfig roleConfig;
 }
+```
 
-/**
- * Agent 类型枚举
- */
-public enum AgentType {
-    REACTIVE("反应式Agent", "基于规则的简单响应Agent"),
-    PROACTIVE("主动式Agent", "具有规划能力的Agent"),
-    AUTONOMOUS("自主式Agent", "完全自主决策的Agent"),
-    MULTI_AGENT("多Agent", "协调多个子Agent的Agent"),
-    WORKFLOW("工作流Agent", "基于工作流编排的Agent");
-    
-    private final String name;
-    private final String description;
-}
+### 4.2 协议配置统一模型
 
+根据 `serviceType` 的不同，`protocolConfig` 存放对应的协议配置实现。四种服务类型各自有独立的协议配置结构。
+
+```java
 /**
- * Agent 描述信息 (用于语义路由)
+ * 协议配置基类
+ * 根据 serviceType 使用对应的子类
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AgentDescription {
-    
-    /**
-     * Agent 功能描述 (自然语言)
-     */
-    private String summary;
-    
-    /**
-     * 使用场景描述
-     */
-    private List<String> useCases;
-    
-    /**
-     * 输入描述
-     */
-    private String inputDescription;
-    
-    /**
-     * 输出描述
-     */
-    private String outputDescription;
-    
-    /**
-     * 示例对话
-     */
-    private List<DialogueExample> examples;
-}
-
-/**
- * 对话示例
- */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class DialogueExample {
-    
-    /**
-     * 用户输入
-     */
-    private String userInput;
-    
-    /**
-     * 期望输出
-     */
-    private String expectedOutput;
-    
-    /**
-     * 场景标签
-     */
-    private String scenario;
-}
-
-/**
- * Agent 能力定义
- */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class AgentCapabilityDefinition {
-    
-    /**
-     * 支持的任务类型
-     */
-    private List<String> taskTypes;
-    
-    /**
-     * 支持的语言
-     */
-    private List<String> supportedLanguages;
-    
-    /**
-     * 上下文窗口大小 (token数)
-     */
-    private Integer contextWindowSize;
-    
-    /**
-     * 是否支持流式输出
-     */
-    private Boolean streamingSupport;
-    
-    /**
-     * 是否支持多模态输入
-     */
-    private Boolean multiModalSupport;
-    
-    /**
-     * 多模态支持类型
-     */
-    private List<String> supportedModalities;
-}
-
-/**
- * 工具定义
- */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class ToolDefinition {
-    
-    /**
-     * 工具名称
-     */
-    private String name;
-    
-    /**
-     * 工具描述
-     */
-    private String description;
-    
-    /**
-     * 参数定义 (JSON Schema)
-     */
-    private String parametersSchema;
-    
-    /**
-     * 返回值描述
-     */
-    private String returnDescription;
-}
-
-/**
- * 协议配置
- */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class ProtocolConfig {
-    
-    /**
-     * 协议类型
-     */
-    private ProtocolType protocolType;
-    
+public abstract class ProtocolConfig {
     /**
      * 协议版本
      */
@@ -799,601 +622,111 @@ public class ProtocolConfig {
      * 认证方式
      */
     private String authenticationType;
-    
-    /**
-     * 协议特定配置
-     */
-    private Map<String, Object> protocolSpecificConfig;
-}
-
-/**
- * 部署配置
- */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class DeploymentConfig {
-    
-    /**
-     * 部署模式
-     */
-    private String deploymentMode;
-    
-    /**
-     * 实例数量
-     */
-    private Integer instanceCount;
-    
-    /**
-     * CPU 需求
-     */
-    private String cpuRequirement;
-    
-    /**
-     * 内存需求
-     */
-    private String memoryRequirement;
-    
-    /**
-     * GPU 需求 (如有)
-     */
-    private String gpuRequirement;
-    
-    /**
-     * 超时配置
-     */
-    private TimeoutConfig timeoutConfig;
-}
-
-/**
- * 超时配置
- */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class TimeoutConfig {
-    
-    /**
-     * 连接超时 (毫秒)
-     */
-    private Long connectTimeout;
-    
-    /**
-     * 读取超时 (毫秒)
-     */
-    private Long readTimeout;
-    
-    /**
-     * 写入超时 (毫秒)
-     */
-    private Long writeTimeout;
 }
 ```
 
-### 4.3 Skill 资源元数据
+#### 4.2.1 API 服务协议配置
 
 ```java
 /**
- * Skill 元数据定义
+ * API 服务协议配置
+ * 适用于 serviceType = API 的服务
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-public class SkillMetadata extends BaseMetadata {
+public class ApiProtocolConfig extends ProtocolConfig {
     
     /**
-     * Skill 类型
+     * API 类型
      */
-    private SkillType skillType;
+    private ApiType apiType;
     
     /**
-     * Skill 描述信息 (用于语义路由)
+     * 基础路径
      */
-    private SkillDescription skillDescription;
+    private String basePath;
     
     /**
-     * 输入参数定义
+     * 认证方式列表
      */
-    private List<ParameterDefinition> inputParameters;
+    private List<ApiAuthType> authTypes;
     
     /**
-     * 输出参数定义
+     * 请求示例
      */
-    private List<ParameterDefinition> outputParameters;
+    private List<ApiExample> examples;
     
     /**
-     * 依赖的模型
+     * 限流配置
      */
-    private List<String> requiredModels;
-    
-    /**
-     * 依赖的工具
-     */
-    private List<String> requiredTools;
-    
-    /**
-     * 协议配置
-     */
-    private ProtocolConfig protocolConfig;
+    private ApiRateLimitConfig rateLimitConfig;
 }
 
-/**
- * Skill 类型枚举
- */
-public enum SkillType {
-    TEXT_GENERATION("文本生成", "文本内容生成"),
-    TEXT_ANALYSIS("文本分析", "文本内容分析与理解"),
-    CODE_GENERATION("代码生成", "代码自动生成"),
-    TRANSLATION("翻译", "多语言翻译"),
-    SUMMARIZATION("摘要", "文本摘要生成"),
-    EXTRACTION("信息抽取", "结构化信息抽取"),
-    CLASSIFICATION("分类", "文本分类"),
-    QA("问答", "问答系统"),
-    CUSTOM("自定义", "自定义技能");
+public enum ApiType {
+    REST("RESTful API"),
+    GRAPHQL("GraphQL"),
+    SOAP("SOAP");
     
-    private final String name;
     private final String description;
 }
 
-/**
- * Skill 描述信息
- */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class SkillDescription {
+public enum ApiAuthType {
+    API_KEY("API Key"),
+    BEARER_TOKEN("Bearer Token"),
+    OAUTH2("OAuth2"),
+    BASIC("Basic Auth"),
+    NONE("无认证");
     
-    /**
-     * 功能摘要
-     */
-    private String summary;
-    
-    /**
-     * 适用场景
-     */
-    private List<String> useCases;
-    
-    /**
-     * 输入格式描述
-     */
-    private String inputFormat;
-    
-    /**
-     * 输出格式描述
-     */
-    private String outputFormat;
-    
-    /**
-     * 示例
-     */
-    private List<SkillExample> examples;
+    private final String description;
 }
 
-/**
- * Skill 示例
- */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class SkillExample {
-    
-    /**
-     * 输入示例
-     */
-    private String input;
-    
-    /**
-     * 输出示例
-     */
-    private String output;
-    
-    /**
-     * 说明
-     */
-    private String description;
-}
-
-/**
- * 参数定义
- */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class ParameterDefinition {
-    
-    /**
-     * 参数名
-     */
+public class ApiExample {
     private String name;
-    
-    /**
-     * 参数描述
-     */
     private String description;
-    
-    /**
-     * 参数类型
-     */
-    private String type;
-    
-    /**
-     * 是否必填
-     */
-    private Boolean required;
-    
-    /**
-     * 默认值
-     */
-    private Object defaultValue;
-    
-    /**
-     * 枚举值列表
-     */
-    private List<Object> enumValues;
+    private String requestExample;
+    private String responseExample;
+}
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ApiRateLimitConfig {
+    private Integer requestsPerSecond;
+    private Integer requestsPerMinute;
+    private Integer requestsPerDay;
+    private Integer concurrentLimit;
 }
 ```
 
-### 4.4 Plugin 资源元数据
+#### 4.2.2 MCP 服务协议配置
 
 ```java
 /**
- * Plugin 元数据定义
+ * MCP 服务协议配置
+ * 适用于 serviceType = MCP 的服务
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-public class PluginMetadata extends BaseMetadata {
+public class McpProtocolConfig extends ProtocolConfig {
     
     /**
-     * Plugin 类型
-     */
-    private PluginType pluginType;
-    
-    /**
-     * Plugin 描述信息
-     */
-    private PluginDescription pluginDescription;
-    
-    /**
-     * 配置参数定义
-     */
-    private List<ParameterDefinition> configParameters;
-    
-    /**
-     * 依赖的其他 Plugin
-     */
-    private List<String> dependencies;
-    
-    /**
-     * 协议配置
-     */
-    private ProtocolConfig protocolConfig;
-}
-
-/**
- * Plugin 类型枚举
- */
-public enum PluginType {
-    TOOL("工具", "提供外部工具调用能力"),
-    CONNECTOR("连接器", "连接外部系统"),
-    TRANSFORMER("转换器", "数据格式转换"),
-    ENRICHER("增强器", "数据增强处理"),
-    FILTER("过滤器", "请求/响应过滤"),
-    CACHE("缓存", "缓存插件"),
-    CUSTOM("自定义", "自定义插件");
-    
-    private final String name;
-    private final String description;
-}
-
-/**
- * Plugin 描述信息
- */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class PluginDescription {
-    
-    /**
-     * 功能摘要
-     */
-    private String summary;
-    
-    /**
-     * 使用场景
-     */
-    private List<String> useCases;
-    
-    /**
-     * 配置说明
-     */
-    private String configurationGuide;
-}
-```
-
-### 4.5 Model 资源元数据
-
-```java
-/**
- * Model 元数据定义
- */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
-public class ModelMetadata extends BaseMetadata {
-    
-    /**
-     * Model 类型
-     */
-    private ModelType modelType;
-    
-    /**
-     * Model 描述信息 (用于语义路由)
-     */
-    private ModelDescription modelDescription;
-    
-    /**
-     * 模型能力
-     */
-    private ModelCapabilityDefinition capabilities;
-    
-    /**
-     * 资源需求
-     */
-    private ResourceRequirements resourceRequirements;
-    
-    /**
-     * 定价信息
-     */
-    private PricingInfo pricing;
-    
-    /**
-     * 协议配置
-     */
-    private ProtocolConfig protocolConfig;
-}
-
-/**
- * Model 类型枚举
- */
-public enum ModelType {
-    LLM("大语言模型", "通用大语言模型"),
-    VLM("视觉语言模型", "支持图像输入的多模态模型"),
-    EMBEDDING("嵌入模型", "文本向量化模型"),
-    RERANKER("重排模型", "检索结果重排模型"),
-    CLASSIFIER("分类模型", "文本分类模型"),
-    CUSTOM("自定义模型", "自定义模型服务");
-    
-    private final String name;
-    private final String description;
-}
-
-/**
- * Model 描述信息 (用于语义路由)
- */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class ModelDescription {
-    
-    /**
-     * 模型功能摘要
-     */
-    private String summary;
-    
-    /**
-     * 擅长任务
-     */
-    private List<String> bestFor;
-    
-    /**
-     * 不擅长任务
-     */
-    private List<String> notRecommendedFor;
-    
-    /**
-     * 适用领域
-     */
-    private List<String> domains;
-    
-    /**
-     * 语言支持
-     */
-    private List<String> supportedLanguages;
-}
-
-/**
- * 模型能力定义
- */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class ModelCapabilityDefinition {
-    
-    /**
-     * 上下文窗口大小 (token数)
-     */
-    private Integer contextWindowSize;
-    
-    /**
-     * 最大输出长度 (token数)
-     */
-    private Integer maxOutputLength;
-    
-    /**
-     * 支持的输入模态
-     */
-    private List<String> inputModalities;
-    
-    /**
-     * 支持的输出模态
-     */
-    private List<String> outputModalities;
-    
-    /**
-     * 是否支持函数调用
-     */
-    private Boolean functionCallingSupport;
-    
-    /**
-     * 是否支持流式输出
-     */
-    private Boolean streamingSupport;
-    
-    /**
-     * 是否支持 JSON 模式
-     */
-    private Boolean jsonModeSupport;
-    
-    /**
-     * 是否支持结构化输出
-     */
-    private Boolean structuredOutputSupport;
-    
-    /**
-     * 温度支持范围
-     */
-    private Range temperatureRange;
-    
-    /**
-     * Top-p 支持范围
-     */
-    private Range topPRange;
-}
-
-/**
- * 范围定义
- */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class Range {
-    private Double min;
-    private Double max;
-}
-
-/**
- * 资源需求
- */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class ResourceRequirements {
-    
-    /**
-     * 最小 GPU 数量
-     */
-    private Integer minGpuCount;
-    
-    /**
-     * GPU 类型
-     */
-    private String gpuType;
-    
-    /**
-     * 最小 GPU 显存 (GB)
-     */
-    private Integer minGpuMemory;
-    
-    /**
-     * 最小内存 (GB)
-     */
-    private Integer minMemory;
-    
-    /**
-     * 最小 CPU 核数
-     */
-    private Integer minCpuCores;
-}
-
-/**
- * 定价信息
- */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class PricingInfo {
-    
-    /**
-     * 定价模型
-     */
-    private PricingModel pricingModel;
-    
-    /**
-     * 每 1K 输入 token 价格
-     */
-    private BigDecimal inputPricePer1K;
-    
-    /**
-     * 每 1K 输出 token 价格
-     */
-    private BigDecimal outputPricePer1K;
-    
-    /**
-     * 每次请求固定价格
-     */
-    private BigDecimal pricePerRequest;
-    
-    /**
-     * 货币单位
-     */
-    private String currency;
-}
-
-/**
- * 定价模型枚举
- */
-public enum PricingModel {
-    TOKEN_BASED("按Token计费"),
-    REQUEST_BASED("按请求计费"),
-    SUBSCRIPTION("订阅制"),
-    FREE("免费");
-    
-    private final String description;
-}
-```
-
-### 4.6 MCP 协议元数据
-
-```java
-/**
- * MCP 协议配置
- */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class McpProtocolConfig {
-    
-    /**
-     * 协议版本
-     */
-    private String protocolVersion;
-    
-    /**
-     * 服务器能力
+     * MCP 服务器能力
      */
     private McpServerCapabilities serverCapabilities;
     
     /**
-     * 客户端能力
+     * MCP 客户端能力
      */
     private McpClientCapabilities clientCapabilities;
     
@@ -1418,9 +751,6 @@ public class McpProtocolConfig {
     private List<McpPromptDefinition> prompts;
 }
 
-/**
- * MCP 传输类型枚举
- */
 public enum McpTransportType {
     STDIO("标准输入输出"),
     HTTP("HTTP传输"),
@@ -1430,178 +760,155 @@ public enum McpTransportType {
     private final String description;
 }
 
-/**
- * MCP 服务器能力
- */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class McpServerCapabilities {
-    
-    /**
-     * 是否支持工具调用
-     */
     private Boolean tools;
-    
-    /**
-     * 是否支持资源访问
-     */
     private Boolean resources;
-    
-    /**
-     * 是否支持提示模板
-     */
     private Boolean prompts;
-    
-    /**
-     * 是否支持日志
-     */
     private Boolean logging;
 }
 
-/**
- * MCP 客户端能力
- */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class McpClientCapabilities {
-    
-    /**
-     * 是否支持工具调用
-     */
     private Boolean tools;
-    
-    /**
-     * 是否支持资源订阅
-     */
     private Boolean resources;
-    
-    /**
-     * 是否支持提示模板
-     */
     private Boolean prompts;
 }
 
-/**
- * MCP 工具定义
- */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class McpToolDefinition {
-    
-    /**
-     * 工具名称
-     */
     private String name;
-    
-    /**
-     * 工具描述
-     */
     private String description;
-    
-    /**
-     * 输入参数 Schema (JSON Schema)
-     */
     private String inputSchema;
 }
 
-/**
- * MCP 资源定义
- */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class McpResourceDefinition {
-    
-    /**
-     * 资源 URI
-     */
     private String uri;
-    
-    /**
-     * 资源名称
-     */
     private String name;
-    
-    /**
-     * 资源描述
-     */
     private String description;
-    
-    /**
-     * MIME 类型
-     */
     private String mimeType;
 }
 
-/**
- * MCP 提示模板定义
- */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class McpPromptDefinition {
-    
-    /**
-     * 提示名称
-     */
     private String name;
-    
-    /**
-     * 提示描述
-     */
     private String description;
-    
-    /**
-     * 参数列表
-     */
     private List<McpPromptArgument> arguments;
 }
 
-/**
- * MCP 提示参数
- */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class McpPromptArgument {
-    
-    /**
-     * 参数名
-     */
     private String name;
-    
-    /**
-     * 参数描述
-     */
     private String description;
-    
-    /**
-     * 是否必填
-     */
     private Boolean required;
 }
 ```
 
-### 4.7 A2A 协议元数据
+#### 4.2.3 ACP 服务协议配置
 
 ```java
 /**
- * A2A 协议配置
+ * ACP 服务协议配置
+ * 适用于 serviceType = ACP 的服务
+ * ACP (Agent Communication Protocol) 用于 Agent 间通信与协作
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class A2aProtocolConfig {
+@EqualsAndHashCode(callSuper = true)
+public class AcpProtocolConfig extends ProtocolConfig {
+    
+    /**
+     * ACP 协议版本
+     */
+    private String acpVersion;
+    
+    /**
+     * Agent 能力声明
+     */
+    private AcpCapabilities capabilities;
+    
+    /**
+     * 支持的消息格式
+     */
+    private List<String> supportedMessageFormats;
+    
+    /**
+     * 支持的交互模式
+     */
+    private List<AcpInteractionMode> supportedInteractionModes;
+    
+    /**
+     * 超时配置
+     */
+    private AcpTimeoutConfig timeoutConfig;
+}
+
+public enum AcpInteractionMode {
+    SYNCHRONOUS("同步交互"),
+    ASYNCHRONOUS("异步交互"),
+    STREAMING("流式交互");
+    
+    private final String description;
+}
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class AcpCapabilities {
+    private Boolean toolCalling;
+    private Boolean resourceAccess;
+    private Boolean promptTemplates;
+    private Boolean streaming;
+    private Boolean multiTurn;
+}
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class AcpTimeoutConfig {
+    private Integer requestTimeout;
+    private Integer connectionTimeout;
+    private Integer streamingTimeout;
+}
+```
+
+#### 4.2.4 A2A 服务协议配置
+
+```java
+/**
+ * A2A 服务协议配置
+ * 适用于 serviceType = A2A 的服务
+ * 基于 Google A2A 协议规范
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+public class A2aProtocolConfig extends ProtocolConfig {
     
     /**
      * Agent Card 信息
@@ -1629,99 +936,34 @@ public class A2aProtocolConfig {
     private A2aTimeoutConfig timeoutConfig;
 }
 
-/**
- * Agent Card - A2A 协议的核心元数据
- */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class AgentCard {
-    
-    /**
-     * Agent 名称
-     */
     private String name;
-    
-    /**
-     * Agent 描述
-     */
     private String description;
-    
-    /**
-     * 服务 URL
-     */
     private String url;
-    
-    /**
-     * 版本
-     */
     private String version;
-    
-    /**
-     * 文档 URL
-     */
     private String documentationUrl;
-    
-    /**
-     * 能力声明
-     */
     private A2aCapabilities capabilities;
-    
-    /**
-     * 默认输入模式
-     */
     private A2aInputMode defaultInputMode;
-    
-    /**
-     * 支持的输入模式
-     */
     private List<A2aInputMode> supportedInputModes;
-    
-    /**
-     * 支持的输出模式
-     */
     private List<A2aOutputMode> supportedOutputModes;
-    
-    /**
-     * 认证信息
-     */
     private A2aAuthentication authentication;
-    
-    /**
-     * 标签
-     */
     private List<String> tags;
 }
 
-/**
- * A2A 能力声明
- */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class A2aCapabilities {
-    
-    /**
-     * 是否支持流式输出
-     */
     private Boolean streaming;
-    
-    /**
-     * 是否支持推送通知
-     */
     private Boolean pushNotifications;
-    
-    /**
-     * 是否支持状态历史
-     */
     private Boolean stateTransitionHistory;
 }
 
-/**
- * A2A 输入模式枚举
- */
 public enum A2aInputMode {
     TEXT("文本"),
     FILE("文件"),
@@ -1730,9 +972,6 @@ public enum A2aInputMode {
     private final String description;
 }
 
-/**
- * A2A 输出模式枚举
- */
 public enum A2aOutputMode {
     TEXT("文本"),
     FILE("文件"),
@@ -1741,34 +980,16 @@ public enum A2aOutputMode {
     private final String description;
 }
 
-/**
- * A2A 认证信息
- */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class A2aAuthentication {
-    
-    /**
-     * 认证类型
-     */
     private A2aAuthType authType;
-    
-    /**
-     * OAuth2 配置 (如果使用 OAuth2)
-     */
     private A2aOAuth2Config oauth2Config;
-    
-    /**
-     * API Key 配置 (如果使用 API Key)
-     */
     private A2aApiKeyConfig apiKeyConfig;
 }
 
-/**
- * A2A 认证类型枚举
- */
 public enum A2aAuthType {
     API_KEY("API Key"),
     OAUTH2("OAuth2"),
@@ -1777,209 +998,615 @@ public enum A2aAuthType {
     private final String description;
 }
 
-/**
- * A2A OAuth2 配置
- */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class A2aOAuth2Config {
-    
-    /**
-     * 授权服务器 URL
-     */
     private String authorizationServerUrl;
-    
-    /**
-     * 客户端 ID
-     */
     private String clientId;
-    
-    /**
-     * Scopes
-     */
     private List<String> scopes;
 }
 
-/**
- * A2A API Key 配置
- */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class A2aApiKeyConfig {
-    
-    /**
-     * Header 名称
-     */
     private String headerName;
-    
-    /**
-     * Key 前缀 (可选)
-     */
     private String keyPrefix;
 }
 
-/**
- * A2A 超时配置
- */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class A2aTimeoutConfig {
-    
-    /**
-     * 任务执行超时 (秒)
-     */
     private Integer taskExecutionTimeout;
-    
-    /**
-     * 连接超时 (秒)
-     */
     private Integer connectionTimeout;
 }
 ```
 
-### 4.8 API 协议元数据
+### 4.3 角色配置统一模型
+
+根据 `role` 的不同，`roleConfig` 存放对应角色的专属配置。角色配置关注的是 AI 服务的内部能力描述（如 Agent 的工具列表、Model 的定价信息），与接入协议无关。
 
 ```java
 /**
- * API 协议配置
+ * 角色配置基类
+ * 根据 role 使用对应的子类
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ApiProtocolConfig {
+public abstract class RoleConfig {
+    /**
+     * 角色描述摘要（用于语义路由）
+     */
+    private String summary;
     
     /**
-     * API 类型
+     * 适用场景
      */
-    private ApiType apiType;
-    
-    /**
-     * 基础路径
-     */
-    private String basePath;
-    
-    /**
-     * 认证方式
-     */
-    private List<ApiAuthType> authTypes;
-    
-    /**
-     * 请求示例
-     */
-    private List<ApiExample> examples;
-    
-    /**
-     * 限流配置
-     */
-    private ApiRateLimitConfig rateLimitConfig;
+    private List<String> useCases;
 }
+```
 
-/**
- * API 类型枚举
- */
-public enum ApiType {
-    REST("RESTful API"),
-    GRAPHQL("GraphQL"),
-    SOAP("SOAP");
-    
-    private final String description;
-}
+#### 4.3.1 Agent 角色配置
 
+```java
 /**
- * API 认证类型枚举
- */
-public enum ApiAuthType {
-    API_KEY("API Key"),
-    BEARER_TOKEN("Bearer Token"),
-    OAUTH2("OAuth2"),
-    BASIC("Basic Auth"),
-    NONE("无认证");
-    
-    private final String description;
-}
-
-/**
- * API 示例
+ * Agent 角色配置
+ * 适用于 role = AGENT 的服务
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ApiExample {
+@EqualsAndHashCode(callSuper = true)
+public class AgentRoleConfig extends RoleConfig {
     
     /**
-     * 示例名称
+     * Agent 类型
      */
+    private AgentType agentType;
+    
+    /**
+     * 输入描述
+     */
+    private String inputDescription;
+    
+    /**
+     * 输出描述
+     */
+    private String outputDescription;
+    
+    /**
+     * 能力定义
+     */
+    private AgentCapabilityDefinition capabilities;
+    
+    /**
+     * 工具列表 (Agent 可调用的工具)
+     */
+    private List<ToolDefinition> tools;
+    
+    /**
+     * 部署配置
+     */
+    private DeploymentConfig deploymentConfig;
+}
+
+public enum AgentType {
+    REACTIVE("反应式Agent", "基于规则的简单响应Agent"),
+    PROACTIVE("主动式Agent", "具有规划能力的Agent"),
+    AUTONOMOUS("自主式Agent", "完全自主决策的Agent"),
+    MULTI_AGENT("多Agent", "协调多个子Agent的Agent"),
+    WORKFLOW("工作流Agent", "基于工作流编排的Agent");
+    
+    private final String name;
+    private final String description;
+}
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class AgentCapabilityDefinition {
+    private List<String> taskTypes;
+    private List<String> supportedLanguages;
+    private Integer contextWindowSize;
+    private Boolean streamingSupport;
+    private Boolean multiModalSupport;
+    private List<String> supportedModalities;
+}
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ToolDefinition {
     private String name;
-    
-    /**
-     * 示例描述
-     */
     private String description;
-    
-    /**
-     * 请求示例 (JSON)
-     */
-    private String requestExample;
-    
-    /**
-     * 响应示例 (JSON)
-     */
-    private String responseExample;
+    private String parametersSchema;
+    private String returnDescription;
 }
 
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class DeploymentConfig {
+    private String deploymentMode;
+    private Integer instanceCount;
+    private String cpuRequirement;
+    private String memoryRequirement;
+    private String gpuRequirement;
+    private TimeoutConfig timeoutConfig;
+}
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class TimeoutConfig {
+    private Long connectTimeout;
+    private Long readTimeout;
+    private Long writeTimeout;
+}
+```
+
+#### 4.3.2 Skill 角色配置
+
+```java
 /**
- * API 限流配置
+ * Skill 角色配置
+ * 适用于 role = SKILL 的服务
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ApiRateLimitConfig {
+@EqualsAndHashCode(callSuper = true)
+public class SkillRoleConfig extends RoleConfig {
     
     /**
-     * 每秒请求数限制
+     * Skill 类型
      */
-    private Integer requestsPerSecond;
+    private SkillType skillType;
     
     /**
-     * 每分钟请求数限制
+     * 输入格式描述
      */
-    private Integer requestsPerMinute;
+    private String inputFormat;
     
     /**
-     * 每日请求数限制
+     * 输出格式描述
      */
-    private Integer requestsPerDay;
+    private String outputFormat;
     
     /**
-     * 并发数限制
+     * 输入参数定义
      */
-    private Integer concurrentLimit;
+    private List<ParameterDefinition> inputParameters;
+    
+    /**
+     * 输出参数定义
+     */
+    private List<ParameterDefinition> outputParameters;
+    
+    /**
+     * 依赖的模型
+     */
+    private List<String> requiredModels;
+    
+    /**
+     * 依赖的工具
+     */
+    private List<String> requiredTools;
+    
+    /**
+     * 示例
+     */
+    private List<SkillExample> examples;
+}
+
+public enum SkillType {
+    TEXT_GENERATION("文本生成", "文本内容生成"),
+    TEXT_ANALYSIS("文本分析", "文本内容分析与理解"),
+    CODE_GENERATION("代码生成", "代码自动生成"),
+    TRANSLATION("翻译", "多语言翻译"),
+    SUMMARIZATION("摘要", "文本摘要生成"),
+    EXTRACTION("信息抽取", "结构化信息抽取"),
+    CLASSIFICATION("分类", "文本分类"),
+    QA("问答", "问答系统"),
+    CUSTOM("自定义", "自定义技能");
+    
+    private final String name;
+    private final String description;
+}
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class SkillExample {
+    private String input;
+    private String output;
+    private String description;
+}
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ParameterDefinition {
+    private String name;
+    private String description;
+    private String type;
+    private Boolean required;
+    private Object defaultValue;
+    private List<Object> enumValues;
+}
+```
+
+#### 4.3.3 Plugin 角色配置
+
+```java
+/**
+ * Plugin 角色配置
+ * 适用于 role = PLUGIN 的服务
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+public class PluginRoleConfig extends RoleConfig {
+    
+    /**
+     * Plugin 类型
+     */
+    private PluginType pluginType;
+    
+    /**
+     * 配置说明
+     */
+    private String configurationGuide;
+    
+    /**
+     * 配置参数定义
+     */
+    private List<ParameterDefinition> configParameters;
+    
+    /**
+     * 依赖的其他 Plugin
+     */
+    private List<String> dependencies;
+}
+
+public enum PluginType {
+    TOOL("工具", "提供外部工具调用能力"),
+    CONNECTOR("连接器", "连接外部系统"),
+    TRANSFORMER("转换器", "数据格式转换"),
+    ENRICHER("增强器", "数据增强处理"),
+    FILTER("过滤器", "请求/响应过滤"),
+    CACHE("缓存", "缓存插件"),
+    CUSTOM("自定义", "自定义插件");
+    
+    private final String name;
+    private final String description;
+}
+```
+
+#### 4.3.4 Model 角色配置
+
+```java
+/**
+ * Model 角色配置
+ * 适用于 role = MODEL 的服务
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+public class ModelRoleConfig extends RoleConfig {
+    
+    /**
+     * Model 类型
+     */
+    private ModelType modelType;
+    
+    /**
+     * 擅长任务
+     */
+    private List<String> bestFor;
+    
+    /**
+     * 不擅长任务
+     */
+    private List<String> notRecommendedFor;
+    
+    /**
+     * 适用领域
+     */
+    private List<String> domains;
+    
+    /**
+     * 语言支持
+     */
+    private List<String> supportedLanguages;
+    
+    /**
+     * 模型能力
+     */
+    private ModelCapabilityDefinition modelCapabilities;
+    
+    /**
+     * 资源需求
+     */
+    private ResourceRequirements resourceRequirements;
+    
+    /**
+     * 定价信息
+     */
+    private PricingInfo pricing;
+}
+
+public enum ModelType {
+    LLM("大语言模型", "通用大语言模型"),
+    VLM("视觉语言模型", "支持图像输入的多模态模型"),
+    EMBEDDING("嵌入模型", "文本向量化模型"),
+    RERANKER("重排模型", "检索结果重排模型"),
+    CLASSIFIER("分类模型", "文本分类模型"),
+    CUSTOM("自定义模型", "自定义模型服务");
+    
+    private final String name;
+    private final String description;
+}
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ModelCapabilityDefinition {
+    private Integer contextWindowSize;
+    private Integer maxOutputLength;
+    private List<String> inputModalities;
+    private List<String> outputModalities;
+    private Boolean functionCallingSupport;
+    private Boolean streamingSupport;
+    private Boolean jsonModeSupport;
+    private Boolean structuredOutputSupport;
+    private Range temperatureRange;
+    private Range topPRange;
+}
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class Range {
+    private Double min;
+    private Double max;
+}
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ResourceRequirements {
+    private Integer minGpuCount;
+    private String gpuType;
+    private Integer minGpuMemory;
+    private Integer minMemory;
+    private Integer minCpuCores;
+}
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class PricingInfo {
+    private PricingModel pricingModel;
+    private BigDecimal inputPricePer1K;
+    private BigDecimal outputPricePer1K;
+    private BigDecimal pricePerRequest;
+    private String currency;
+}
+
+public enum PricingModel {
+    TOKEN_BASED("按Token计费"),
+    REQUEST_BASED("按请求计费"),
+    SUBSCRIPTION("订阅制"),
+    FREE("免费");
+    
+    private final String description;
+}
+```
+
+### 4.4 服务元数据构建示例
+
+以下示例展示如何构建不同服务类型的完整元数据。所有服务统一使用 `ServiceMetadata` 类，通过 `serviceType` + `role` + `protocolConfig` + `roleConfig` 组合表达完整的注册信息。
+
+```java
+/**
+ * 统一服务元数据
+ * 所有 AI 服务注册时使用同一个模型，通过字段组合区分不同服务类型和角色
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ServiceMetadata extends BaseMetadata {
+    // 继承 BaseMetadata 的所有字段
+    // serviceType + role + protocolConfig + roleConfig 组合使用
+}
+
+/**
+ * 构建 API 类型 + Agent 角色的服务元数据示例
+ */
+public ServiceMetadata buildApiAgentMetadata() {
+    return ServiceMetadata.builder()
+        .resourceId(UUID.randomUUID().toString())
+        .serviceType(ServiceType.API)
+        .role(ServiceRole.AGENT)
+        .name("customer-service-agent")
+        .version("1.0.0")
+        .description("客服智能体，支持多轮对话和问题解答")
+        .serviceAddress("10.0.1.100:8080")
+        .capabilities(List.of("multi-turn-dialogue", "intent-recognition", "knowledge-qa"))
+        .tags(Map.of("domain", "customer-service", "language", "zh-CN"))
+        .status(ServiceStatus.UP)
+        .weight(80)
+        .protocolConfig(ApiProtocolConfig.builder()
+            .protocolVersion("1.0")
+            .apiType(ApiType.REST)
+            .basePath("/api/v1/agent")
+            .endpointPath("/chat")
+            .authenticationType("BEARER_TOKEN")
+            .authTypes(List.of(ApiAuthType.BEARER_TOKEN))
+            .rateLimitConfig(ApiRateLimitConfig.builder()
+                .requestsPerSecond(100)
+                .requestsPerMinute(5000)
+                .build())
+            .build())
+        .roleConfig(AgentRoleConfig.builder()
+            .summary("智能客服Agent，能够理解用户意图并提供精准的问题解答")
+            .useCases(List.of("售前咨询", "售后服务", "投诉处理", "产品推荐"))
+            .agentType(AgentType.PROACTIVE)
+            .inputDescription("用户自然语言输入，支持文本和语音转文本")
+            .outputDescription("结构化回复，包含回答内容、置信度、推荐操作")
+            .capabilities(AgentCapabilityDefinition.builder()
+                .taskTypes(List.of("dialogue", "qa", "recommendation"))
+                .supportedLanguages(List.of("zh-CN", "en-US"))
+                .contextWindowSize(32000)
+                .streamingSupport(true)
+                .multiModalSupport(false)
+                .build())
+            .tools(List.of(ToolDefinition.builder()
+                .name("knowledge_search")
+                .description("知识库检索")
+                .parametersSchema("{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\"}}}")
+                .build()))
+            .build())
+        .build();
+}
+
+/**
+ * 构建 MCP 类型 + Plugin 角色的服务元数据示例
+ */
+public ServiceMetadata buildMcpPluginMetadata() {
+    return ServiceMetadata.builder()
+        .resourceId(UUID.randomUUID().toString())
+        .serviceType(ServiceType.MCP)
+        .role(ServiceRole.PLUGIN)
+        .name("filesystem-mcp-server")
+        .version("1.0.0")
+        .description("文件系统MCP Server，提供文件读写和目录操作能力")
+        .serviceAddress("10.0.1.104:3000")
+        .capabilities(List.of("file-read", "file-write", "directory-list"))
+        .tags(Map.of("category", "tool", "type", "filesystem"))
+        .status(ServiceStatus.UP)
+        .weight(50)
+        .protocolConfig(McpProtocolConfig.builder()
+            .protocolVersion("2024-11-05")
+            .endpointPath("/mcp")
+            .authenticationType("API_KEY")
+            .transportTypes(List.of(McpTransportType.STDIO, McpTransportType.HTTP))
+            .serverCapabilities(McpServerCapabilities.builder()
+                .tools(true).resources(true).prompts(false).logging(true).build())
+            .tools(List.of(
+                McpToolDefinition.builder().name("read_file").description("读取文件内容")
+                    .inputSchema("{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"文件路径\"}},\"required\":[\"path\"]}").build(),
+                McpToolDefinition.builder().name("write_file").description("写入文件内容")
+                    .inputSchema("{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"},\"content\":{\"type\":\"string\"}},\"required\":[\"path\",\"content\"]}").build(),
+                McpToolDefinition.builder().name("list_directory").description("列出目录内容")
+                    .inputSchema("{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}").build()))
+            .resources(List.of(McpResourceDefinition.builder()
+                .uri("file:///workspace").name("workspace").description("工作空间根目录").mimeType("inode/directory").build()))
+            .build())
+        .roleConfig(PluginRoleConfig.builder()
+            .summary("文件系统MCP插件，提供文件读写和目录操作")
+            .useCases(List.of("文件管理", "目录浏览", "文件搜索"))
+            .pluginType(PluginType.TOOL)
+            .configurationGuide("需要配置访问路径和权限")
+            .build())
+        .build();
+}
+
+/**
+ * 构建 A2A 类型 + Agent 角色的服务元数据示例
+ */
+public ServiceMetadata buildA2aAgentMetadata() {
+    return ServiceMetadata.builder()
+        .resourceId(UUID.randomUUID().toString())
+        .serviceType(ServiceType.A2A)
+        .role(ServiceRole.AGENT)
+        .name("research-assistant-agent")
+        .version("1.0.0")
+        .description("研究助手Agent，支持A2A协议与其他Agent协作")
+        .serviceAddress("10.0.1.106:8086")
+        .capabilities(List.of("research", "analysis", "report-generation"))
+        .tags(Map.of("domain", "research", "collaboration", "true"))
+        .status(ServiceStatus.UP)
+        .weight(65)
+        .protocolConfig(A2aProtocolConfig.builder()
+            .endpointPath("/a2a")
+            .authenticationType("OAUTH2")
+            .agentCard(AgentCard.builder()
+                .name("Research Assistant Agent")
+                .description("专业的研究助手，能够进行深度信息收集和分析")
+                .url("https://agent.example.com/a2a/research-assistant")
+                .version("1.0.0")
+                .capabilities(A2aCapabilities.builder()
+                    .streaming(true).pushNotifications(true).stateTransitionHistory(true).build())
+                .defaultInputMode(A2aInputMode.TEXT)
+                .supportedInputModes(List.of(A2aInputMode.TEXT, A2aInputMode.FILE))
+                .supportedOutputModes(List.of(A2aOutputMode.TEXT, A2aOutputMode.FILE))
+                .authentication(A2aAuthentication.builder()
+                    .authType(A2aAuthType.OAUTH2)
+                    .oauth2Config(A2aOAuth2Config.builder()
+                        .authorizationServerUrl("https://auth.example.com")
+                        .clientId("research-agent-client")
+                        .scopes(List.of("agent:read", "agent:execute"))
+                        .build())
+                    .build())
+                .tags(List.of("research", "analysis", "reporting"))
+                .build())
+            .supportedTaskTypes(List.of("research", "analysis", "report-generation"))
+            .timeoutConfig(A2aTimeoutConfig.builder()
+                .taskExecutionTimeout(300).connectionTimeout(10).build())
+            .build())
+        .roleConfig(AgentRoleConfig.builder()
+            .summary("研究助手Agent，擅长信息收集、分析和报告生成")
+            .useCases(List.of("市场调研", "竞品分析", "技术调研", "报告撰写"))
+            .agentType(AgentType.MULTI_AGENT)
+            .capabilities(AgentCapabilityDefinition.builder()
+                .taskTypes(List.of("research", "analysis", "writing"))
+                .streamingSupport(true)
+                .build())
+            .build())
+        .build();
 }
 ```
 
 ### 4.9 Nacos 注册元数据详细定义
 
-本节定义各服务类型、各协议在 Nacos 中注册时的完整元数据 KV 结构。
+本节定义各服务类型在 Nacos 中注册时的完整元数据 KV 结构。所有服务统一使用 `serviceType`（API/MCP/ACP/A2A）标识服务类型，使用 `role` 标识内部角色（AGENT/SKILL/PLUGIN/MODEL），协议特定字段使用 `api.*`、`mcp.*`、`acp.*`、`a2a.*` 前缀，角色特定字段使用 `role.*` 前缀。
 
-#### 4.9.1 Agent 服务 Nacos 注册元数据
+#### 4.9.1 API 服务 Nacos 注册元数据（Agent 角色）
 
 ```json
 {
-  "resourceId": "agent-uuid-001",
-  "resourceType": "AGENT",
+  "resourceId": "api-uuid-001",
+  "serviceType": "API",
+  "role": "AGENT",
   "name": "customer-service-agent",
   "version": "1.0.0",
   "description": "客服智能体，支持多轮对话和问题解答",
-  "protocolType": "API",
   "serviceAddress": "10.0.1.100:8080",
   "capabilities": "[\"multi-turn-dialogue\", \"intent-recognition\", \"knowledge-qa\"]",
   "tags": "{\"domain\":\"customer-service\", \"language\":\"zh-CN\", \"team\":\"ai-platform\"}",
@@ -1989,38 +1616,43 @@ public class ApiRateLimitConfig {
   "createTime": "2024-01-15T10:00:00Z",
   "updateTime": "2024-01-15T10:00:00Z",
 
-  "agent.agentType": "PROACTIVE",
-  "agent.summary": "智能客服Agent，能够理解用户意图并提供精准的问题解答",
-  "agent.useCases": "[\"售前咨询\", \"售后服务\", \"投诉处理\", \"产品推荐\"]",
-  "agent.inputDescription": "用户自然语言输入，支持文本和语音转文本",
-  "agent.outputDescription": "结构化回复，包含回答内容、置信度、推荐操作",
-  "agent.taskTypes": "[\"dialogue\", \"qa\", \"recommendation\"]",
-  "agent.supportedLanguages": "[\"zh-CN\", \"en-US\"]",
-  "agent.contextWindowSize": "32000",
-  "agent.streamingSupport": "true",
-  "agent.multiModalSupport": "false",
-  "agent.tools": "[{\"name\":\"knowledge_search\",\"description\":\"知识库检索\",\"parametersSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"query\\\":{\\\"type\\\":\\\"string\\\"}}}\"}]",
-  "agent.deploymentMode": "kubernetes",
-  "agent.instanceCount": "3",
-  "agent.connectTimeout": "5000",
-  "agent.readTimeout": "30000",
+  "api.apiType": "REST",
+  "api.basePath": "/api/v1/agent",
+  "api.authTypes": "[\"BEARER_TOKEN\"]",
+  "api.requestsPerSecond": "100",
+  "api.requestsPerMinute": "5000",
+  "api.requestsPerDay": "100000",
+  "api.concurrentLimit": "50",
 
-  "protocol.version": "1.0",
-  "protocol.endpointPath": "/api/v1/agent/chat",
+  "role.agentType": "PROACTIVE",
+  "role.summary": "智能客服Agent，能够理解用户意图并提供精准的问题解答",
+  "role.useCases": "[\"售前咨询\", \"售后服务\", \"投诉处理\", \"产品推荐\"]",
+  "role.inputDescription": "用户自然语言输入，支持文本和语音转文本",
+  "role.outputDescription": "结构化回复，包含回答内容、置信度、推荐操作",
+  "role.taskTypes": "[\"dialogue\", \"qa\", \"recommendation\"]",
+  "role.supportedLanguages": "[\"zh-CN\", \"en-US\"]",
+  "role.contextWindowSize": "32000",
+  "role.streamingSupport": "true",
+  "role.multiModalSupport": "false",
+  "role.tools": "[{\"name\":\"knowledge_search\",\"description\":\"知识库检索\",\"parametersSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"query\\\":{\\\"type\\\":\\\"string\\\"}}}\"}]",
+  "role.deploymentMode": "kubernetes",
+  "role.instanceCount": "3",
+
+  "protocol.endpointPath": "/chat",
   "protocol.authenticationType": "BEARER_TOKEN"
 }
 ```
 
-#### 4.9.2 Skill 服务 Nacos 注册元数据
+#### 4.9.2 API 服务 Nacos 注册元数据（Skill 角色）
 
 ```json
 {
-  "resourceId": "skill-uuid-001",
-  "resourceType": "SKILL",
+  "resourceId": "api-uuid-002",
+  "serviceType": "API",
+  "role": "SKILL",
   "name": "text-summarization-skill",
   "version": "1.2.0",
   "description": "文本摘要技能，支持长文本自动摘要生成",
-  "protocolType": "API",
   "serviceAddress": "10.0.1.101:8081",
   "capabilities": "[\"summarization\", \"text-generation\", \"chinese\", \"english\"]",
   "tags": "{\"domain\":\"nlp\", \"task\":\"summarization\", \"model\":\"gpt-4\"}",
@@ -2030,32 +1662,37 @@ public class ApiRateLimitConfig {
   "createTime": "2024-01-15T10:00:00Z",
   "updateTime": "2024-01-15T10:00:00Z",
 
-  "skill.skillType": "SUMMARIZATION",
-  "skill.summary": "自动摘要生成技能，支持多种长度和风格的摘要",
-  "skill.useCases": "[\"新闻摘要\", \"文档摘要\", \"会议纪要生成\"]",
-  "skill.inputFormat": "长文本字符串，最大支持 100K tokens",
-  "skill.outputFormat": "摘要文本，支持自定义长度",
-  "skill.inputParameters": "[{\"name\":\"text\",\"type\":\"string\",\"required\":true,\"description\":\"待摘要文本\"},{\"name\":\"maxLength\",\"type\":\"integer\",\"required\":false,\"description\":\"最大摘要长度\",\"defaultValue\":200}]",
-  "skill.outputParameters": "[{\"name\":\"summary\",\"type\":\"string\",\"description\":\"生成的摘要\"},{\"name\":\"keyPoints\",\"type\":\"array\",\"description\":\"关键点列表\"}]",
-  "skill.requiredModels": "[\"gpt-4\", \"claude-3\"]",
-  "skill.examples": "[{\"input\":\"长文本内容...\",\"output\":\"摘要内容\",\"description\":\"新闻摘要示例\"}]",
+  "api.apiType": "REST",
+  "api.basePath": "/api/v1/skill",
+  "api.authTypes": "[\"API_KEY\"]",
+  "api.requestsPerSecond": "50",
+  "api.requestsPerMinute": "2000",
 
-  "protocol.version": "1.0",
-  "protocol.endpointPath": "/api/v1/skill/summarize",
+  "role.skillType": "SUMMARIZATION",
+  "role.summary": "自动摘要生成技能，支持多种长度和风格的摘要",
+  "role.useCases": "[\"新闻摘要\", \"文档摘要\", \"会议纪要生成\"]",
+  "role.inputFormat": "长文本字符串，最大支持 100K tokens",
+  "role.outputFormat": "摘要文本，支持自定义长度",
+  "role.inputParameters": "[{\"name\":\"text\",\"type\":\"string\",\"required\":true,\"description\":\"待摘要文本\"},{\"name\":\"maxLength\",\"type\":\"integer\",\"required\":false,\"description\":\"最大摘要长度\",\"defaultValue\":200}]",
+  "role.outputParameters": "[{\"name\":\"summary\",\"type\":\"string\",\"description\":\"生成的摘要\"},{\"name\":\"keyPoints\",\"type\":\"array\",\"description\":\"关键点列表\"}]",
+  "role.requiredModels": "[\"gpt-4\", \"claude-3\"]",
+  "role.examples": "[{\"input\":\"长文本内容...\",\"output\":\"摘要内容\",\"description\":\"新闻摘要示例\"}]",
+
+  "protocol.endpointPath": "/summarize",
   "protocol.authenticationType": "API_KEY"
 }
 ```
 
-#### 4.9.3 Plugin 服务 Nacos 注册元数据
+#### 4.9.3 API 服务 Nacos 注册元数据（Plugin 角色）
 
 ```json
 {
-  "resourceId": "plugin-uuid-001",
-  "resourceType": "PLUGIN",
+  "resourceId": "api-uuid-003",
+  "serviceType": "API",
+  "role": "PLUGIN",
   "name": "web-search-plugin",
   "version": "2.0.0",
   "description": "Web搜索插件，提供实时网络搜索能力",
-  "protocolType": "API",
   "serviceAddress": "10.0.1.102:8082",
   "capabilities": "[\"web-search\", \"real-time-data\", \"url-fetch\"]",
   "tags": "{\"category\":\"connector\", \"provider\":\"google\", \"rateLimit\":\"100/min\"}",
@@ -2065,29 +1702,34 @@ public class ApiRateLimitConfig {
   "createTime": "2024-01-15T10:00:00Z",
   "updateTime": "2024-01-15T10:00:00Z",
 
-  "plugin.pluginType": "CONNECTOR",
-  "plugin.summary": "实时Web搜索插件，支持Google、Bing等搜索引擎",
-  "plugin.useCases": "[\"实时信息查询\", \"新闻搜索\", \"学术论文检索\"]",
-  "plugin.configurationGuide": "需要配置API Key和搜索引擎偏好",
-  "plugin.configParameters": "[{\"name\":\"apiKey\",\"type\":\"string\",\"required\":true,\"description\":\"搜索引擎API Key\"},{\"name\":\"searchEngine\",\"type\":\"string\",\"required\":false,\"description\":\"搜索引擎\",\"defaultValue\":\"google\",\"enumValues\":[\"google\",\"bing\",\"duckduckgo\"]}]",
-  "plugin.dependencies": "[]",
+  "api.apiType": "REST",
+  "api.basePath": "/api/v1/plugin",
+  "api.authTypes": "[\"API_KEY\"]",
+  "api.requestsPerSecond": "100",
+  "api.requestsPerMinute": "5000",
 
-  "protocol.version": "1.0",
-  "protocol.endpointPath": "/api/v1/plugin/search",
+  "role.pluginType": "CONNECTOR",
+  "role.summary": "实时Web搜索插件，支持Google、Bing等搜索引擎",
+  "role.useCases": "[\"实时信息查询\", \"新闻搜索\", \"学术论文检索\"]",
+  "role.configurationGuide": "需要配置API Key和搜索引擎偏好",
+  "role.configParameters": "[{\"name\":\"apiKey\",\"type\":\"string\",\"required\":true,\"description\":\"搜索引擎API Key\"},{\"name\":\"searchEngine\",\"type\":\"string\",\"required\":false,\"description\":\"搜索引擎\",\"defaultValue\":\"google\",\"enumValues\":[\"google\",\"bing\",\"duckduckgo\"]}]",
+  "role.dependencies": "[]",
+
+  "protocol.endpointPath": "/search",
   "protocol.authenticationType": "API_KEY"
 }
 ```
 
-#### 4.9.4 Model 服务 Nacos 注册元数据
+#### 4.9.4 API 服务 Nacos 注册元数据（Model 角色）
 
 ```json
 {
-  "resourceId": "model-uuid-001",
-  "resourceType": "MODEL",
+  "resourceId": "api-uuid-004",
+  "serviceType": "API",
+  "role": "MODEL",
   "name": "gpt-4-turbo",
   "version": "2024-04-09",
   "description": "GPT-4 Turbo 模型，支持128K上下文窗口",
-  "protocolType": "API",
   "serviceAddress": "10.0.1.103:8083",
   "capabilities": "[\"text-generation\", \"function-calling\", \"vision\", \"128k-context\"]",
   "tags": "{\"provider\":\"openai\", \"tier\":\"premium\", \"availability\":\"high\"}",
@@ -2097,48 +1739,51 @@ public class ApiRateLimitConfig {
   "createTime": "2024-01-15T10:00:00Z",
   "updateTime": "2024-01-15T10:00:00Z",
 
-  "model.modelType": "LLM",
-  "model.summary": "OpenAI GPT-4 Turbo，支持文本生成、函数调用、视觉理解",
-  "model.bestFor": "[\"复杂推理\", \"代码生成\", \"多轮对话\", \"内容创作\"]",
-  "model.notRecommendedFor": "[\"简单分类\", \"关键词提取\"]",
-  "model.domains": "[\"通用\", \"编程\", \"创意写作\", \"分析\"]",
-  "model.supportedLanguages": "[\"zh-CN\", \"en-US\", \"ja-JP\", \"ko-KR\", \"fr-FR\", \"de-DE\", \"es-ES\"]",
-  "model.contextWindowSize": "128000",
-  "model.maxOutputLength": "4096",
-  "model.inputModalities": "[\"text\", \"image\"]",
-  "model.outputModalities": "[\"text\"]",
-  "model.functionCallingSupport": "true",
-  "model.streamingSupport": "true",
-  "model.jsonModeSupport": "true",
-  "model.structuredOutputSupport": "true",
-  "model.temperatureRange": "{\"min\":0.0,\"max\":2.0}",
-  "model.topPRange": "{\"min\":0.0,\"max\":1.0}",
-  "model.minGpuCount": "8",
-  "model.gpuType": "A100-80G",
-  "model.minGpuMemory": "640",
-  "model.minMemory": "128",
-  "model.minCpuCores": "32",
-  "model.pricingModel": "TOKEN_BASED",
-  "model.inputPricePer1K": "0.01",
-  "model.outputPricePer1K": "0.03",
-  "model.currency": "USD",
+  "api.apiType": "REST",
+  "api.basePath": "/v1",
+  "api.authTypes": "[\"BEARER_TOKEN\"]",
 
-  "protocol.version": "v1",
-  "protocol.endpointPath": "/v1/chat/completions",
+  "role.modelType": "LLM",
+  "role.summary": "OpenAI GPT-4 Turbo，支持文本生成、函数调用、视觉理解",
+  "role.bestFor": "[\"复杂推理\", \"代码生成\", \"多轮对话\", \"内容创作\"]",
+  "role.notRecommendedFor": "[\"简单分类\", \"关键词提取\"]",
+  "role.domains": "[\"通用\", \"编程\", \"创意写作\", \"分析\"]",
+  "role.supportedLanguages": "[\"zh-CN\", \"en-US\", \"ja-JP\", \"ko-KR\", \"fr-FR\", \"de-DE\", \"es-ES\"]",
+  "role.contextWindowSize": "128000",
+  "role.maxOutputLength": "4096",
+  "role.inputModalities": "[\"text\", \"image\"]",
+  "role.outputModalities": "[\"text\"]",
+  "role.functionCallingSupport": "true",
+  "role.streamingSupport": "true",
+  "role.jsonModeSupport": "true",
+  "role.structuredOutputSupport": "true",
+  "role.temperatureRange": "{\"min\":0.0,\"max\":2.0}",
+  "role.topPRange": "{\"min\":0.0,\"max\":1.0}",
+  "role.minGpuCount": "8",
+  "role.gpuType": "A100-80G",
+  "role.minGpuMemory": "640",
+  "role.minMemory": "128",
+  "role.minCpuCores": "32",
+  "role.pricingModel": "TOKEN_BASED",
+  "role.inputPricePer1K": "0.01",
+  "role.outputPricePer1K": "0.03",
+  "role.currency": "USD",
+
+  "protocol.endpointPath": "/chat/completions",
   "protocol.authenticationType": "BEARER_TOKEN"
 }
 ```
 
-#### 4.9.5 MCP Server 服务 Nacos 注册元数据
+#### 4.9.5 MCP 服务 Nacos 注册元数据（Plugin 角色）
 
 ```json
 {
   "resourceId": "mcp-uuid-001",
-  "resourceType": "PLUGIN",
+  "serviceType": "MCP",
+  "role": "PLUGIN",
   "name": "filesystem-mcp-server",
   "version": "1.0.0",
   "description": "文件系统MCP Server，提供文件读写和目录操作能力",
-  "protocolType": "MCP",
   "serviceAddress": "10.0.1.104:3000",
   "capabilities": "[\"file-read\", \"file-write\", \"directory-list\"]",
   "tags": "{\"category\":\"tool\", \"type\":\"filesystem\", \"mcp-version\":\"2024-11-05\"}",
@@ -2154,28 +1799,30 @@ public class ApiRateLimitConfig {
   "mcp.serverCapabilities.resources": "true",
   "mcp.serverCapabilities.prompts": "false",
   "mcp.serverCapabilities.logging": "true",
-
   "mcp.tools": "[{\"name\":\"read_file\",\"description\":\"读取文件内容\",\"inputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"path\\\":{\\\"type\\\":\\\"string\\\",\\\"description\\\":\\\"文件路径\\\"}},\\\"required\\\":[\\\"path\\\"]}\"},{\"name\":\"write_file\",\"description\":\"写入文件内容\",\"inputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"path\\\":{\\\"type\\\":\\\"string\\\"},\\\"content\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"path\\\",\\\"content\\\"]}\"},{\"name\":\"list_directory\",\"description\":\"列出目录内容\",\"inputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"path\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"path\\\"]}\"}]",
-
   "mcp.resources": "[{\"uri\":\"file:///workspace\",\"name\":\"workspace\",\"description\":\"工作空间根目录\",\"mimeType\":\"inode/directory\"}]",
-
   "mcp.prompts": "[]",
+
+  "role.pluginType": "TOOL",
+  "role.summary": "文件系统MCP插件，提供文件读写和目录操作",
+  "role.useCases": "[\"文件管理\", \"目录浏览\", \"文件搜索\"]",
+  "role.configurationGuide": "需要配置访问路径和权限",
 
   "protocol.endpointPath": "/mcp",
   "protocol.authenticationType": "API_KEY"
 }
 ```
 
-#### 4.9.6 MCP Client (Agent with MCP) 服务 Nacos 注册元数据
+#### 4.9.6 MCP 服务 Nacos 注册元数据（Agent 角色）
 
 ```json
 {
-  "resourceId": "agent-mcp-uuid-001",
-  "resourceType": "AGENT",
+  "resourceId": "mcp-uuid-002",
+  "serviceType": "MCP",
+  "role": "AGENT",
   "name": "coding-assistant-agent",
   "version": "1.0.0",
   "description": "编程助手Agent，通过MCP协议调用外部工具",
-  "protocolType": "MCP",
   "serviceAddress": "10.0.1.105:8085",
   "capabilities": "[\"code-generation\", \"code-review\", \"refactoring\"]",
   "tags": "{\"domain\":\"coding\", \"mcp-client\":\"true\"}",
@@ -2185,34 +1832,34 @@ public class ApiRateLimitConfig {
   "createTime": "2024-01-15T10:00:00Z",
   "updateTime": "2024-01-15T10:00:00Z",
 
-  "agent.agentType": "PROACTIVE",
-  "agent.summary": "编程助手Agent，支持代码生成、审查和重构",
-  "agent.useCases": "[\"代码生成\", \"代码审查\", \"Bug修复\", \"代码重构\"]",
-  "agent.taskTypes": "[\"code-generation\", \"code-analysis\"]",
-  "agent.contextWindowSize": "100000",
-  "agent.streamingSupport": "true",
-  "agent.tools": "[{\"name\":\"code_search\",\"description\":\"代码搜索\"},{\"name\":\"run_tests\",\"description\":\"运行测试\"}]",
-
   "mcp.protocolVersion": "2024-11-05",
   "mcp.clientCapabilities.tools": "true",
   "mcp.clientCapabilities.resources": "true",
   "mcp.clientCapabilities.prompts": "true",
+
+  "role.agentType": "PROACTIVE",
+  "role.summary": "编程助手Agent，支持代码生成、审查和重构",
+  "role.useCases": "[\"代码生成\", \"代码审查\", \"Bug修复\", \"代码重构\"]",
+  "role.taskTypes": "[\"code-generation\", \"code-analysis\"]",
+  "role.contextWindowSize": "100000",
+  "role.streamingSupport": "true",
+  "role.tools": "[{\"name\":\"code_search\",\"description\":\"代码搜索\"},{\"name\":\"run_tests\",\"description\":\"运行测试\"}]",
 
   "protocol.endpointPath": "/mcp",
   "protocol.authenticationType": "BEARER_TOKEN"
 }
 ```
 
-#### 4.9.7 A2A Agent 服务 Nacos 注册元数据
+#### 4.9.7 A2A 服务 Nacos 注册元数据（Agent 角色）
 
 ```json
 {
   "resourceId": "a2a-uuid-001",
-  "resourceType": "AGENT",
+  "serviceType": "A2A",
+  "role": "AGENT",
   "name": "research-assistant-agent",
   "version": "1.0.0",
   "description": "研究助手Agent，支持A2A协议与其他Agent协作",
-  "protocolType": "A2A",
   "serviceAddress": "10.0.1.106:8086",
   "capabilities": "[\"research\", \"analysis\", \"report-generation\", \"a2a-collaboration\"]",
   "tags": "{\"domain\":\"research\", \"a2a-enabled\":\"true\", \"collaboration\":\"true\"}",
@@ -2221,11 +1868,6 @@ public class ApiRateLimitConfig {
   "healthCheckInterval": "30",
   "createTime": "2024-01-15T10:00:00Z",
   "updateTime": "2024-01-15T10:00:00Z",
-
-  "agent.agentType": "MULTI_AGENT",
-  "agent.summary": "研究助手Agent，擅长信息收集、分析和报告生成",
-  "agent.useCases": "[\"市场调研\", \"竞品分析\", \"技术调研\", \"报告撰写\"]",
-  "agent.taskTypes": "[\"research\", \"analysis\", \"writing\"]",
 
   "a2a.agentCard.name": "Research Assistant Agent",
   "a2a.agentCard.description": "专业的研究助手，能够进行深度信息收集和分析",
@@ -2243,50 +1885,63 @@ public class ApiRateLimitConfig {
   "a2a.agentCard.authentication.oauth2Config.authorizationServerUrl": "https://auth.example.com",
   "a2a.agentCard.authentication.oauth2Config.clientId": "research-agent-client",
   "a2a.agentCard.authentication.oauth2Config.scopes": "[\"agent:read\", \"agent:execute\"]",
-
   "a2a.supportedTaskTypes": "[\"research\", \"analysis\", \"report-generation\"]",
   "a2a.defaultInputMode": "TEXT",
   "a2a.supportedInputModes": "[\"TEXT\", \"FILE\"]",
   "a2a.taskExecutionTimeout": "300",
   "a2a.connectionTimeout": "10",
 
+  "role.agentType": "MULTI_AGENT",
+  "role.summary": "研究助手Agent，擅长信息收集、分析和报告生成",
+  "role.useCases": "[\"市场调研\", \"竞品分析\", \"技术调研\", \"报告撰写\"]",
+  "role.taskTypes": "[\"research\", \"analysis\", \"writing\"]",
+
   "protocol.endpointPath": "/a2a",
   "protocol.authenticationType": "OAUTH2"
 }
 ```
 
-#### 4.9.8 API 协议服务 Nacos 注册元数据
+#### 4.9.8 ACP 服务 Nacos 注册元数据（Agent 角色）
 
 ```json
 {
-  "resourceId": "api-uuid-001",
-  "resourceType": "SKILL",
-  "name": "sentiment-analysis-api",
+  "resourceId": "acp-uuid-001",
+  "serviceType": "ACP",
+  "role": "AGENT",
+  "name": "workflow-orchestrator-agent",
   "version": "1.0.0",
-  "description": "情感分析API，提供文本情感判断能力",
-  "protocolType": "API",
-  "serviceAddress": "10.0.1.107:8087",
-  "capabilities": "[\"sentiment-analysis\", \"emotion-detection\", \"text-classification\"]",
-  "tags": "{\"category\":\"nlp\", \"task\":\"sentiment\", \"format\":\"rest\"}",
+  "description": "工作流编排Agent，通过ACP协议协调多个子Agent完成复杂任务",
+  "serviceAddress": "10.0.1.108:8088",
+  "capabilities": "[\"workflow-orchestration\", \"task-decomposition\", \"multi-agent-coordination\"]",
+  "tags": "{\"domain\":\"workflow\", \"acp-enabled\":\"true\", \"orchestrator\":\"true\"}",
   "status": "UP",
-  "weight": "55",
+  "weight": "70",
   "healthCheckInterval": "30",
   "createTime": "2024-01-15T10:00:00Z",
   "updateTime": "2024-01-15T10:00:00Z",
 
-  "api.apiType": "REST",
-  "api.basePath": "/api/v1/sentiment",
-  "api.authTypes": "[\"API_KEY\", \"BEARER_TOKEN\"]",
-  "api.requestsPerSecond": "100",
-  "api.requestsPerMinute": "5000",
-  "api.requestsPerDay": "100000",
-  "api.concurrentLimit": "50",
+  "acp.acpVersion": "1.0",
+  "acp.capabilities.toolCalling": "true",
+  "acp.capabilities.resourceAccess": "true",
+  "acp.capabilities.promptTemplates": "true",
+  "acp.capabilities.streaming": "true",
+  "acp.capabilities.multiTurn": "true",
+  "acp.supportedMessageFormats": "[\"JSON\", \"Protobuf\"]",
+  "acp.supportedInteractionModes": "[\"SYNCHRONOUS\", \"ASYNCHRONOUS\", \"STREAMING\"]",
+  "acp.requestTimeout": "60",
+  "acp.connectionTimeout": "10",
+  "acp.streamingTimeout": "300",
 
-  "api.examples": "[{\"name\":\"基本情感分析\",\"description\":\"分析文本情感倾向\",\"requestExample\":\"{\\\"text\\\":\\\"这个产品非常好用！\\\"}\",\"responseExample\":\"{\\\"sentiment\\\":\\\"positive\\\",\\\"confidence\\\":0.95,\\\"emotions\\\":[{\\\"name\\\":\\\"joy\\\",\\\"score\\\":0.8}]}\"}]",
+  "role.agentType": "WORKFLOW",
+  "role.summary": "工作流编排Agent，能够将复杂任务分解为子任务并协调多个Agent完成",
+  "role.useCases": "[\"复杂任务编排\", \"多步骤工作流\", \"跨Agent协作\"]",
+  "role.taskTypes": "[\"orchestration\", \"planning\", \"decomposition\"]",
+  "role.contextWindowSize": "50000",
+  "role.streamingSupport": "true",
+  "role.tools": "[{\"name\":\"task_decompose\",\"description\":\"任务分解\"},{\"name\":\"agent_dispatch\",\"description\":\"Agent调度\"},{\"name\":\"result_aggregate\",\"description\":\"结果聚合\"}]",
 
-  "protocol.version": "1.0",
-  "protocol.endpointPath": "/api/v1/sentiment/analyze",
-  "protocol.authenticationType": "API_KEY"
+  "protocol.endpointPath": "/acp",
+  "protocol.authenticationType": "BEARER_TOKEN"
 }
 ```
 
@@ -2297,244 +1952,236 @@ public class ApiRateLimitConfig {
 ```java
 /**
  * Nacos 元数据构建器
+ * 所有 AI 服务统一构建流程：通用字段 + serviceType 对应的协议字段 + role 对应的角色字段
  */
 @Component
 public class NacosMetadataBuilder {
     
     /**
-     * 构建 Agent 服务的 Nacos 元数据
+     * 构建通用元数据（所有服务类型共享）
      */
-    public Map<String, String> buildAgentMetadata(AgentMetadata agentMetadata) {
-        Map<String, String> metadata = new HashMap<>();
+    public Map<String, String> buildBaseMetadata(ServiceMetadata metadata) {
+        Map<String, String> nacosMetadata = new HashMap<>();
         
         // 通用字段
-        metadata.put("resourceId", agentMetadata.getResourceId());
-        metadata.put("resourceType", ResourceType.AGENT.name());
-        metadata.put("name", agentMetadata.getName());
-        metadata.put("version", agentMetadata.getVersion());
-        metadata.put("description", agentMetadata.getDescription());
-        metadata.put("protocolType", agentMetadata.getProtocolType().name());
-        metadata.put("serviceAddress", agentMetadata.getServiceAddress());
-        metadata.put("capabilities", JSON.toJSONString(agentMetadata.getCapabilities()));
-        metadata.put("tags", JSON.toJSONString(agentMetadata.getTags()));
-        metadata.put("status", agentMetadata.getStatus().name());
-        metadata.put("weight", String.valueOf(agentMetadata.getWeight()));
-        metadata.put("healthCheckInterval", String.valueOf(agentMetadata.getHealthCheckInterval()));
-        metadata.put("createTime", agentMetadata.getCreateTime().toString());
-        metadata.put("updateTime", agentMetadata.getUpdateTime().toString());
+        nacosMetadata.put("resourceId", metadata.getResourceId());
+        nacosMetadata.put("serviceType", metadata.getServiceType().name());
+        nacosMetadata.put("name", metadata.getName());
+        nacosMetadata.put("version", metadata.getVersion());
+        nacosMetadata.put("description", metadata.getDescription());
+        nacosMetadata.put("serviceAddress", metadata.getServiceAddress());
+        nacosMetadata.put("capabilities", JSON.toJSONString(metadata.getCapabilities()));
+        nacosMetadata.put("tags", JSON.toJSONString(metadata.getTags()));
+        nacosMetadata.put("status", metadata.getStatus().name());
+        nacosMetadata.put("weight", String.valueOf(metadata.getWeight()));
+        nacosMetadata.put("healthCheckInterval", String.valueOf(metadata.getHealthCheckInterval()));
+        nacosMetadata.put("createTime", metadata.getCreateTime().toString());
+        nacosMetadata.put("updateTime", metadata.getUpdateTime().toString());
         
-        // Agent 专用字段
-        if (agentMetadata.getAgentType() != null) {
-            metadata.put("agent.agentType", agentMetadata.getAgentType().name());
-        }
-        if (agentMetadata.getAgentDescription() != null) {
-            AgentDescription desc = agentMetadata.getAgentDescription();
-            metadata.put("agent.summary", desc.getSummary());
-            metadata.put("agent.useCases", JSON.toJSONString(desc.getUseCases()));
-            metadata.put("agent.inputDescription", desc.getInputDescription());
-            metadata.put("agent.outputDescription", desc.getOutputDescription());
-        }
-        if (agentMetadata.getCapabilities() != null) {
-            AgentCapabilityDefinition caps = agentMetadata.getCapabilities();
-            metadata.put("agent.taskTypes", JSON.toJSONString(caps.getTaskTypes()));
-            metadata.put("agent.supportedLanguages", JSON.toJSONString(caps.getSupportedLanguages()));
-            metadata.put("agent.contextWindowSize", String.valueOf(caps.getContextWindowSize()));
-            metadata.put("agent.streamingSupport", String.valueOf(caps.getStreamingSupport()));
-            metadata.put("agent.multiModalSupport", String.valueOf(caps.getMultiModalSupport()));
-        }
-        if (agentMetadata.getTools() != null) {
-            metadata.put("agent.tools", JSON.toJSONString(agentMetadata.getTools()));
+        // role 字段
+        if (metadata.getRole() != null) {
+            nacosMetadata.put("role", metadata.getRole().name());
         }
         
-        // 协议字段
-        if (agentMetadata.getProtocolConfig() != null) {
-            ProtocolConfig proto = agentMetadata.getProtocolConfig();
-            metadata.put("protocol.version", proto.getProtocolVersion());
-            metadata.put("protocol.endpointPath", proto.getEndpointPath());
-            metadata.put("protocol.authenticationType", proto.getAuthenticationType());
+        // 协议通用字段
+        if (metadata.getProtocolConfig() != null) {
+            ProtocolConfig proto = metadata.getProtocolConfig();
+            nacosMetadata.put("protocol.endpointPath", proto.getEndpointPath());
+            nacosMetadata.put("protocol.authenticationType", proto.getAuthenticationType());
         }
         
-        return metadata;
+        return nacosMetadata;
     }
     
     /**
-     * 构建 Model 服务的 Nacos 元数据
+     * 构建 API 服务的协议字段
      */
-    public Map<String, String> buildModelMetadata(ModelMetadata modelMetadata) {
-        Map<String, String> metadata = new HashMap<>();
-        
-        // 通用字段
-        metadata.put("resourceId", modelMetadata.getResourceId());
-        metadata.put("resourceType", ResourceType.MODEL.name());
-        metadata.put("name", modelMetadata.getName());
-        metadata.put("version", modelMetadata.getVersion());
-        metadata.put("description", modelMetadata.getDescription());
-        metadata.put("protocolType", modelMetadata.getProtocolType().name());
-        metadata.put("serviceAddress", modelMetadata.getServiceAddress());
-        metadata.put("capabilities", JSON.toJSONString(modelMetadata.getCapabilities()));
-        metadata.put("tags", JSON.toJSONString(modelMetadata.getTags()));
-        metadata.put("status", modelMetadata.getStatus().name());
-        metadata.put("weight", String.valueOf(modelMetadata.getWeight()));
-        
-        // Model 专用字段
-        if (modelMetadata.getModelType() != null) {
-            metadata.put("model.modelType", modelMetadata.getModelType().name());
+    public void buildApiMetadata(Map<String, String> nacosMetadata, ApiProtocolConfig config) {
+        if (config == null) return;
+        nacosMetadata.put("api.apiType", config.getApiType().name());
+        nacosMetadata.put("api.basePath", config.getBasePath());
+        nacosMetadata.put("api.authTypes", JSON.toJSONString(config.getAuthTypes()));
+        if (config.getRateLimitConfig() != null) {
+            ApiRateLimitConfig rl = config.getRateLimitConfig();
+            nacosMetadata.put("api.requestsPerSecond", String.valueOf(rl.getRequestsPerSecond()));
+            nacosMetadata.put("api.requestsPerMinute", String.valueOf(rl.getRequestsPerMinute()));
+            nacosMetadata.put("api.requestsPerDay", String.valueOf(rl.getRequestsPerDay()));
+            nacosMetadata.put("api.concurrentLimit", String.valueOf(rl.getConcurrentLimit()));
         }
-        if (modelMetadata.getModelDescription() != null) {
-            ModelDescription desc = modelMetadata.getModelDescription();
-            metadata.put("model.summary", desc.getSummary());
-            metadata.put("model.bestFor", JSON.toJSONString(desc.getBestFor()));
-            metadata.put("model.notRecommendedFor", JSON.toJSONString(desc.getNotRecommendedFor()));
-            metadata.put("model.domains", JSON.toJSONString(desc.getDomains()));
-            metadata.put("model.supportedLanguages", JSON.toJSONString(desc.getSupportedLanguages()));
+        if (config.getExamples() != null) {
+            nacosMetadata.put("api.examples", JSON.toJSONString(config.getExamples()));
         }
-        if (modelMetadata.getCapabilities() != null) {
-            ModelCapabilityDefinition caps = modelMetadata.getCapabilities();
-            metadata.put("model.contextWindowSize", String.valueOf(caps.getContextWindowSize()));
-            metadata.put("model.maxOutputLength", String.valueOf(caps.getMaxOutputLength()));
-            metadata.put("model.inputModalities", JSON.toJSONString(caps.getInputModalities()));
-            metadata.put("model.outputModalities", JSON.toJSONString(caps.getOutputModalities()));
-            metadata.put("model.functionCallingSupport", String.valueOf(caps.getFunctionCallingSupport()));
-            metadata.put("model.streamingSupport", String.valueOf(caps.getStreamingSupport()));
-            metadata.put("model.jsonModeSupport", String.valueOf(caps.getJsonModeSupport()));
-        }
-        if (modelMetadata.getPricing() != null) {
-            PricingInfo pricing = modelMetadata.getPricing();
-            metadata.put("model.pricingModel", pricing.getPricingModel().name());
-            metadata.put("model.inputPricePer1K", pricing.getInputPricePer1K().toString());
-            metadata.put("model.outputPricePer1K", pricing.getOutputPricePer1K().toString());
-            metadata.put("model.currency", pricing.getCurrency());
-        }
-        
-        return metadata;
     }
     
     /**
-     * 构建 MCP Server 的 Nacos 元数据
+     * 构建 MCP 服务的协议字段
      */
-    public Map<String, String> buildMcpServerMetadata(
-            PluginMetadata pluginMetadata, 
-            McpProtocolConfig mcpConfig) {
-        Map<String, String> metadata = new HashMap<>();
-        
-        // 通用字段
-        metadata.put("resourceId", pluginMetadata.getResourceId());
-        metadata.put("resourceType", ResourceType.PLUGIN.name());
-        metadata.put("name", pluginMetadata.getName());
-        metadata.put("version", pluginMetadata.getVersion());
-        metadata.put("protocolType", ProtocolType.MCP.name());
-        metadata.put("serviceAddress", pluginMetadata.getServiceAddress());
-        
-        // MCP 协议字段
-        if (mcpConfig != null) {
-            metadata.put("mcp.protocolVersion", mcpConfig.getProtocolVersion());
-            metadata.put("mcp.transportTypes", JSON.toJSONString(mcpConfig.getTransportTypes()));
-            
-            if (mcpConfig.getServerCapabilities() != null) {
-                McpServerCapabilities caps = mcpConfig.getServerCapabilities();
-                metadata.put("mcp.serverCapabilities.tools", String.valueOf(caps.getTools()));
-                metadata.put("mcp.serverCapabilities.resources", String.valueOf(caps.getResources()));
-                metadata.put("mcp.serverCapabilities.prompts", String.valueOf(caps.getPrompts()));
-                metadata.put("mcp.serverCapabilities.logging", String.valueOf(caps.getLogging()));
-            }
-            
-            if (mcpConfig.getTools() != null) {
-                metadata.put("mcp.tools", JSON.toJSONString(mcpConfig.getTools()));
-            }
-            if (mcpConfig.getResources() != null) {
-                metadata.put("mcp.resources", JSON.toJSONString(mcpConfig.getResources()));
-            }
-            if (mcpConfig.getPrompts() != null) {
-                metadata.put("mcp.prompts", JSON.toJSONString(mcpConfig.getPrompts()));
-            }
+    public void buildMcpMetadata(Map<String, String> nacosMetadata, McpProtocolConfig config) {
+        if (config == null) return;
+        nacosMetadata.put("mcp.protocolVersion", config.getProtocolVersion());
+        nacosMetadata.put("mcp.transportTypes", JSON.toJSONString(config.getTransportTypes()));
+        if (config.getServerCapabilities() != null) {
+            McpServerCapabilities caps = config.getServerCapabilities();
+            nacosMetadata.put("mcp.serverCapabilities.tools", String.valueOf(caps.getTools()));
+            nacosMetadata.put("mcp.serverCapabilities.resources", String.valueOf(caps.getResources()));
+            nacosMetadata.put("mcp.serverCapabilities.prompts", String.valueOf(caps.getPrompts()));
+            nacosMetadata.put("mcp.serverCapabilities.logging", String.valueOf(caps.getLogging()));
         }
-        
-        return metadata;
+        if (config.getTools() != null) {
+            nacosMetadata.put("mcp.tools", JSON.toJSONString(config.getTools()));
+        }
+        if (config.getResources() != null) {
+            nacosMetadata.put("mcp.resources", JSON.toJSONString(config.getResources()));
+        }
+        if (config.getPrompts() != null) {
+            nacosMetadata.put("mcp.prompts", JSON.toJSONString(config.getPrompts()));
+        }
     }
     
     /**
-     * 构建 A2A Agent 的 Nacos 元数据
+     * 构建 ACP 服务的协议字段
      */
-    public Map<String, String> buildA2aAgentMetadata(
-            AgentMetadata agentMetadata,
-            A2aProtocolConfig a2aConfig) {
-        Map<String, String> metadata = new HashMap<>();
-        
-        // 通用字段
-        metadata.put("resourceId", agentMetadata.getResourceId());
-        metadata.put("resourceType", ResourceType.AGENT.name());
-        metadata.put("name", agentMetadata.getName());
-        metadata.put("version", agentMetadata.getVersion());
-        metadata.put("protocolType", ProtocolType.A2A.name());
-        metadata.put("serviceAddress", agentMetadata.getServiceAddress());
-        
-        // Agent 通用字段
-        if (agentMetadata.getAgentType() != null) {
-            metadata.put("agent.agentType", agentMetadata.getAgentType().name());
+    public void buildAcpMetadata(Map<String, String> nacosMetadata, AcpProtocolConfig config) {
+        if (config == null) return;
+        nacosMetadata.put("acp.acpVersion", config.getAcpVersion());
+        if (config.getCapabilities() != null) {
+            AcpCapabilities caps = config.getCapabilities();
+            nacosMetadata.put("acp.capabilities.toolCalling", String.valueOf(caps.getToolCalling()));
+            nacosMetadata.put("acp.capabilities.resourceAccess", String.valueOf(caps.getResourceAccess()));
+            nacosMetadata.put("acp.capabilities.streaming", String.valueOf(caps.getStreaming()));
+            nacosMetadata.put("acp.capabilities.multiTurn", String.valueOf(caps.getMultiTurn()));
         }
-        
-        // A2A 协议字段
-        if (a2aConfig != null && a2aConfig.getAgentCard() != null) {
-            AgentCard card = a2aConfig.getAgentCard();
-            metadata.put("a2a.agentCard.name", card.getName());
-            metadata.put("a2a.agentCard.description", card.getDescription());
-            metadata.put("a2a.agentCard.url", card.getUrl());
-            metadata.put("a2a.agentCard.version", card.getVersion());
-            
+        nacosMetadata.put("acp.supportedMessageFormats", JSON.toJSONString(config.getSupportedMessageFormats()));
+        nacosMetadata.put("acp.supportedInteractionModes", JSON.toJSONString(config.getSupportedInteractionModes()));
+        if (config.getTimeoutConfig() != null) {
+            AcpTimeoutConfig tc = config.getTimeoutConfig();
+            nacosMetadata.put("acp.requestTimeout", String.valueOf(tc.getRequestTimeout()));
+            nacosMetadata.put("acp.connectionTimeout", String.valueOf(tc.getConnectionTimeout()));
+        }
+    }
+    
+    /**
+     * 构建 A2A 服务的协议字段
+     */
+    public void buildA2aMetadata(Map<String, String> nacosMetadata, A2aProtocolConfig config) {
+        if (config == null) return;
+        if (config.getAgentCard() != null) {
+            AgentCard card = config.getAgentCard();
+            nacosMetadata.put("a2a.agentCard.name", card.getName());
+            nacosMetadata.put("a2a.agentCard.description", card.getDescription());
+            nacosMetadata.put("a2a.agentCard.url", card.getUrl());
+            nacosMetadata.put("a2a.agentCard.version", card.getVersion());
             if (card.getCapabilities() != null) {
-                metadata.put("a2a.agentCard.capabilities.streaming", 
-                    String.valueOf(card.getCapabilities().getStreaming()));
-                metadata.put("a2a.agentCard.capabilities.pushNotifications", 
-                    String.valueOf(card.getCapabilities().getPushNotifications()));
+                nacosMetadata.put("a2a.agentCard.capabilities.streaming", String.valueOf(card.getCapabilities().getStreaming()));
+                nacosMetadata.put("a2a.agentCard.capabilities.pushNotifications", String.valueOf(card.getCapabilities().getPushNotifications()));
             }
-            
-            metadata.put("a2a.agentCard.defaultInputMode", 
-                card.getDefaultInputMode().name());
-            metadata.put("a2a.agentCard.supportedInputModes", 
-                JSON.toJSONString(card.getSupportedInputModes()));
-            metadata.put("a2a.agentCard.supportedOutputModes", 
-                JSON.toJSONString(card.getSupportedOutputModes()));
-            
+            nacosMetadata.put("a2a.agentCard.defaultInputMode", card.getDefaultInputMode().name());
+            nacosMetadata.put("a2a.agentCard.supportedInputModes", JSON.toJSONString(card.getSupportedInputModes()));
+            nacosMetadata.put("a2a.agentCard.supportedOutputModes", JSON.toJSONString(card.getSupportedOutputModes()));
             if (card.getAuthentication() != null) {
-                metadata.put("a2a.agentCard.authentication.authType", 
-                    card.getAuthentication().getAuthType().name());
+                nacosMetadata.put("a2a.agentCard.authentication.authType", card.getAuthentication().getAuthType().name());
             }
         }
-        
-        if (a2aConfig.getSupportedTaskTypes() != null) {
-            metadata.put("a2a.supportedTaskTypes", 
-                JSON.toJSONString(a2aConfig.getSupportedTaskTypes()));
+        nacosMetadata.put("a2a.supportedTaskTypes", JSON.toJSONString(config.getSupportedTaskTypes()));
+        nacosMetadata.put("a2a.defaultInputMode", config.getDefaultInputMode().name());
+        if (config.getTimeoutConfig() != null) {
+            nacosMetadata.put("a2a.taskExecutionTimeout", String.valueOf(config.getTimeoutConfig().getTaskExecutionTimeout()));
+            nacosMetadata.put("a2a.connectionTimeout", String.valueOf(config.getTimeoutConfig().getConnectionTimeout()));
         }
-        
-        return metadata;
     }
     
     /**
-     * 从 Nacos 元数据解析为 AgentMetadata
+     * 构建 Agent 角色的字段
      */
-    public AgentMetadata parseAgentMetadata(Map<String, String> nacosMetadata) {
-        return AgentMetadata.builder()
-            .resourceId(nacosMetadata.get("resourceId"))
-            .name(nacosMetadata.get("name"))
-            .version(nacosMetadata.get("version"))
-            .description(nacosMetadata.get("description"))
-            .serviceAddress(nacosMetadata.get("serviceAddress"))
-            .agentType(AgentType.valueOf(nacosMetadata.get("agent.agentType")))
-            .agentDescription(AgentDescription.builder()
-                .summary(nacosMetadata.get("agent.summary"))
-                .useCases(JSON.parseArray(nacosMetadata.get("agent.useCases"), String.class))
-                .inputDescription(nacosMetadata.get("agent.inputDescription"))
-                .outputDescription(nacosMetadata.get("agent.outputDescription"))
-                .build())
-            .capabilities(AgentCapabilityDefinition.builder()
-                .taskTypes(JSON.parseArray(nacosMetadata.get("agent.taskTypes"), String.class))
-                .supportedLanguages(JSON.parseArray(nacosMetadata.get("agent.supportedLanguages"), String.class))
-                .contextWindowSize(Integer.valueOf(nacosMetadata.get("agent.contextWindowSize")))
-                .streamingSupport(Boolean.valueOf(nacosMetadata.get("agent.streamingSupport")))
-                .build())
-            .status(ServiceStatus.valueOf(nacosMetadata.get("status")))
-            .weight(Integer.valueOf(nacosMetadata.get("weight")))
-            .build();
+    public void buildAgentRoleMetadata(Map<String, String> nacosMetadata, AgentRoleConfig config) {
+        if (config == null) return;
+        nacosMetadata.put("role.agentType", config.getAgentType().name());
+        nacosMetadata.put("role.summary", config.getSummary());
+        nacosMetadata.put("role.useCases", JSON.toJSONString(config.getUseCases()));
+        nacosMetadata.put("role.inputDescription", config.getInputDescription());
+        nacosMetadata.put("role.outputDescription", config.getOutputDescription());
+        if (config.getCapabilities() != null) {
+            AgentCapabilityDefinition caps = config.getCapabilities();
+            nacosMetadata.put("role.taskTypes", JSON.toJSONString(caps.getTaskTypes()));
+            nacosMetadata.put("role.supportedLanguages", JSON.toJSONString(caps.getSupportedLanguages()));
+            nacosMetadata.put("role.contextWindowSize", String.valueOf(caps.getContextWindowSize()));
+            nacosMetadata.put("role.streamingSupport", String.valueOf(caps.getStreamingSupport()));
+            nacosMetadata.put("role.multiModalSupport", String.valueOf(caps.getMultiModalSupport()));
+        }
+        if (config.getTools() != null) {
+            nacosMetadata.put("role.tools", JSON.toJSONString(config.getTools()));
+        }
+    }
+    
+    /**
+     * 构建 Model 角色的字段
+     */
+    public void buildModelRoleMetadata(Map<String, String> nacosMetadata, ModelRoleConfig config) {
+        if (config == null) return;
+        nacosMetadata.put("role.modelType", config.getModelType().name());
+        nacosMetadata.put("role.summary", config.getSummary());
+        nacosMetadata.put("role.bestFor", JSON.toJSONString(config.getBestFor()));
+        nacosMetadata.put("role.notRecommendedFor", JSON.toJSONString(config.getNotRecommendedFor()));
+        nacosMetadata.put("role.domains", JSON.toJSONString(config.getDomains()));
+        nacosMetadata.put("role.supportedLanguages", JSON.toJSONString(config.getSupportedLanguages()));
+        if (config.getModelCapabilities() != null) {
+            ModelCapabilityDefinition caps = config.getModelCapabilities();
+            nacosMetadata.put("role.contextWindowSize", String.valueOf(caps.getContextWindowSize()));
+            nacosMetadata.put("role.maxOutputLength", String.valueOf(caps.getMaxOutputLength()));
+            nacosMetadata.put("role.inputModalities", JSON.toJSONString(caps.getInputModalities()));
+            nacosMetadata.put("role.functionCallingSupport", String.valueOf(caps.getFunctionCallingSupport()));
+            nacosMetadata.put("role.streamingSupport", String.valueOf(caps.getStreamingSupport()));
+        }
+        if (config.getPricing() != null) {
+            PricingInfo pricing = config.getPricing();
+            nacosMetadata.put("role.pricingModel", pricing.getPricingModel().name());
+            nacosMetadata.put("role.inputPricePer1K", pricing.getInputPricePer1K().toString());
+            nacosMetadata.put("role.outputPricePer1K", pricing.getOutputPricePer1K().toString());
+            nacosMetadata.put("role.currency", pricing.getCurrency());
+        }
+    }
+    
+    /**
+     * 统一入口：构建完整的服务元数据
+     */
+    public Map<String, String> buildFullMetadata(ServiceMetadata metadata) {
+        Map<String, String> nacosMetadata = buildBaseMetadata(metadata);
+        
+        // 按 serviceType 构建协议字段
+        switch (metadata.getServiceType()) {
+            case API:
+                buildApiMetadata(nacosMetadata, (ApiProtocolConfig) metadata.getProtocolConfig());
+                break;
+            case MCP:
+                buildMcpMetadata(nacosMetadata, (McpProtocolConfig) metadata.getProtocolConfig());
+                break;
+            case ACP:
+                buildAcpMetadata(nacosMetadata, (AcpProtocolConfig) metadata.getProtocolConfig());
+                break;
+            case A2A:
+                buildA2aMetadata(nacosMetadata, (A2aProtocolConfig) metadata.getProtocolConfig());
+                break;
+        }
+        
+        // 按 role 构建角色字段
+        if (metadata.getRoleConfig() != null) {
+            switch (metadata.getRole()) {
+                case AGENT:
+                    buildAgentRoleMetadata(nacosMetadata, (AgentRoleConfig) metadata.getRoleConfig());
+                    break;
+                case SKILL:
+                    buildSkillRoleMetadata(nacosMetadata, (SkillRoleConfig) metadata.getRoleConfig());
+                    break;
+                case PLUGIN:
+                    buildPluginRoleMetadata(nacosMetadata, (PluginRoleConfig) metadata.getRoleConfig());
+                    break;
+                case MODEL:
+                    buildModelRoleMetadata(nacosMetadata, (ModelRoleConfig) metadata.getRoleConfig());
+                    break;
+            }
+        }
+        
+        return nacosMetadata;
     }
 }
 ```
@@ -2544,6 +2191,7 @@ public class NacosMetadataBuilder {
 ```java
 /**
  * 基于元数据的服务发现
+ * 所有查询以 serviceType 为首要过滤维度，再按 role、能力标签等条件组合筛选
  */
 @Service
 @Slf4j
@@ -2553,15 +2201,14 @@ public class MetadataBasedDiscovery {
     private final NamingService namingService;
     
     /**
-     * 根据资源类型发现服务
+     * 根据服务类型发现服务
      */
-    public List<Instance> discoverByResourceType(String group, ResourceType resourceType) {
+    public List<Instance> discoverByServiceType(String group, ServiceType serviceType) {
         try {
-            // 使用 Nacos 元数据过滤查询
             return namingService.selectInstances(
                 group,
-                instance -> resourceType.name().equals(
-                    instance.getMetadata().get("resourceType"))
+                instance -> serviceType.name().equals(
+                    instance.getMetadata().get("serviceType"))
             );
         } catch (NacosException e) {
             log.error("Failed to discover instances: {}", e.getMessage(), e);
@@ -2570,14 +2217,14 @@ public class MetadataBasedDiscovery {
     }
     
     /**
-     * 根据协议类型发现服务
+     * 根据服务类型 + 角色发现服务
      */
-    public List<Instance> discoverByProtocolType(String group, ProtocolType protocolType) {
+    public List<Instance> discoverByServiceTypeAndRole(String group, ServiceType serviceType, ServiceRole role) {
         try {
             return namingService.selectInstances(
                 group,
-                instance -> protocolType.name().equals(
-                    instance.getMetadata().get("protocolType"))
+                instance -> serviceType.name().equals(instance.getMetadata().get("serviceType"))
+                    && role.name().equals(instance.getMetadata().get("role"))
             );
         } catch (NacosException e) {
             log.error("Failed to discover instances: {}", e.getMessage(), e);
@@ -2622,15 +2269,14 @@ public class MetadataBasedDiscovery {
         }
     }
     
-    private boolean matchConditions(Map<String, String> metadata, 
-                                   DiscoveryConditions conditions) {
-        if (conditions.getResourceType() != null) {
-            if (!conditions.getResourceType().name().equals(metadata.get("resourceType"))) {
+    private boolean matchConditions(Map<String, String> metadata, DiscoveryConditions conditions) {
+        if (conditions.getServiceType() != null) {
+            if (!conditions.getServiceType().name().equals(metadata.get("serviceType"))) {
                 return false;
             }
         }
-        if (conditions.getProtocolType() != null) {
-            if (!conditions.getProtocolType().name().equals(metadata.get("protocolType"))) {
+        if (conditions.getRole() != null) {
+            if (!conditions.getRole().name().equals(metadata.get("role"))) {
                 return false;
             }
         }
@@ -2662,8 +2308,8 @@ public class MetadataBasedDiscovery {
 @NoArgsConstructor
 @AllArgsConstructor
 public class DiscoveryConditions {
-    private ResourceType resourceType;
-    private ProtocolType protocolType;
+    private ServiceType serviceType;
+    private ServiceRole role;
     private List<String> requiredCapabilities;
     private Integer minWeight;
     private Map<String, String> tags;
@@ -2869,9 +2515,9 @@ deploy:
   "path": "/api/v1/chat",
   "statusCode": 200,
   "duration": 150,
-  "resourceType": "AGENT",
-  "resourceId": "agent-001",
-  "protocol": "MCP",
+  "serviceType": "MCP",
+  "role": "AGENT",
+  "resourceId": "mcp-uuid-001",
   "message": "Request processed successfully"
 }
 ```
@@ -2986,15 +2632,16 @@ groups:
 
 ### 第二阶段：注册中心（第 3-4 周）
 
-- [ ] Agent/Skill/Plugin/Model 注册模块开发
-- [ ] API 协议支持
+- [ ] 统一服务注册模块开发（ServiceType + Role 模型）
+- [ ] API 类型服务注册与发现
 - [ ] 健康检查机制
 - [ ] 元数据管理基础功能
 
-### 第三阶段：MCP/A2A 协议（第 5-6 周）
+### 第三阶段：MCP/ACP/A2A 协议（第 5-6 周）
 
-- [ ] MCP 协议适配器开发
-- [ ] A2A 协议适配器开发
+- [ ] MCP 类型服务注册与协议适配
+- [ ] ACP 类型服务注册与协议适配
+- [ ] A2A 类型服务注册与协议适配
 - [ ] 协议转换层实现
 - [ ] 协议兼容性测试
 
@@ -3035,12 +2682,15 @@ groups:
 | 术语 | 定义 |
 |-----|------|
 | AI Gateway | AI 网关，AI 能力的统一接入层 |
+| ServiceType | 服务类型，向 Nacos 注册时的统一分类维度：API/MCP/ACP/A2A |
+| ServiceRole | 服务角色，AI 服务在系统中的内部角色：AGENT/SKILL/PLUGIN/MODEL |
 | Agent | 智能体，具有自主决策能力的 AI 组件 |
 | Skill | 技能，特定领域的 AI 能力单元 |
 | Plugin | 插件，可扩展的功能模块 |
 | Model | 模型，大语言模型或专用模型服务 |
-| MCP | Model Context Protocol，模型上下文协议 |
-| A2A | Agent-to-Agent，Agent 间通信协议 |
+| MCP | Model Context Protocol，模型上下文协议，用于工具调用和资源访问 |
+| ACP | Agent Communication Protocol，Agent 间通信协议 |
+| A2A | Agent-to-Agent，基于 Google 规范的 Agent 间通信协议 |
 | Nacos | 阿里开源的服务发现与配置管理平台 |
 | RBAC | 基于角色的访问控制 |
 | JWT | JSON Web Token，用于身份认证 |
@@ -3129,9 +2779,3 @@ a2a:
   enabled: true
   default-timeout: 60000
 ```
-
----
-
-**文档版本**: v2.0
-**最后更新**: 2024-01-15
-**作者**: AI 架构师团队
