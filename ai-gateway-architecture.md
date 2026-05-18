@@ -407,6 +407,8 @@ spring:
 | healthCheckInterval | Integer | 否 | 健康检查间隔 (秒)，默认 30 |
 | createTime | String | 是 | 创建时间 (ISO 8601) |
 | updateTime | String | 是 | 更新时间 (ISO 8601) |
+| protocol.endpointPath | String | 否 | 服务端点路径 |
+| protocol.authenticationType | String | 否 | 认证方式 |
 
 **Nacos 元数据扩展字段前缀规范：**
 
@@ -414,11 +416,55 @@ spring:
 
 | 前缀 | 适用 serviceType | 用途 | 说明 |
 |------|-----------------|------|------|
-| api.* | API | REST API 服务配置 | API 类型、认证方式、限流配置、请求示例等 |
-| mcp.* | MCP | MCP 协议配置 | 协议版本、传输类型、工具列表、资源列表、提示模板等 |
-| acp.* | ACP | ACP 协议配置 | Agent 通信协议版本、能力声明、消息格式等 |
-| a2a.* | A2A | A2A 协议配置 | Agent Card、任务类型、输入输出模式、认证配置等 |
+| api.* | API | REST API 服务配置 | API 类型、认证方式、限流配置、请求示例、端点定义等 |
+| mcp.* | MCP | MCP 协议配置 | 协议版本、传输类型、工具列表（含 inputSchema/outputSchema）、资源列表、提示模板等 |
+| acp.* | ACP | ACP 协议配置 | Agent 通信协议版本、能力声明、消息格式、动作定义、事件定义等 |
+| a2a.* | A2A | A2A 协议配置 | Agent Card、任务类型、任务定义（含状态流转/重试策略）、输入输出模式、认证配置等 |
 | role.* | 全部 | 服务角色信息 | 内部角色类型、角色专属配置（如 Agent 的工具列表、Model 的定价信息等） |
+
+**Nacos 元数据接口定义字段：**
+
+各协议类型的接口参数定义使用以下元数据 Key 存储（JSON 字符串格式）：
+
+| 元数据 Key | 适用 serviceType | 说明 |
+|-----------|-----------------|------|
+| api.endpoints | API | API 端点定义列表，包含 method、path、parameters、requestBody、response 等 |
+| api.endpoints[].endpointId | API | 端点唯一标识 |
+| api.endpoints[].name | API | 端点名称 |
+| api.endpoints[].method | API | HTTP 方法 (GET/POST/PUT/DELETE/PATCH) |
+| api.endpoints[].path | API | 端点路径 |
+| api.endpoints[].parameters | API | 请求参数列表 (path/query/header/cookie) |
+| api.endpoints[].requestBody | API | 请求体 Schema (JSON Schema) |
+| api.endpoints[].response | API | 响应体 Schema (JSON Schema) |
+| api.endpoints[].streaming | API | 是否支持流式响应 |
+| api.endpoints[].timeout | API | 超时时间 (毫秒) |
+| mcp.tools | MCP | MCP 工具列表 |
+| mcp.tools[].inputSchema | MCP | 工具输入参数 Schema (JSON Schema) |
+| mcp.tools[].outputSchema | MCP | 工具输出参数 Schema (JSON Schema) |
+| mcp.tools[].annotations | MCP | 工具注解 (readOnlyHint/destructiveHint/idempotentHint/openWorldHint) |
+| mcp.tools[].examples | MCP | 工具调用示例列表 |
+| mcp.tools[].requiresConfirmation | MCP | 是否需要确认才能执行 |
+| mcp.resources[].uriTemplate | MCP | 资源模板 URI (支持动态参数) |
+| mcp.resources[].subscribable | MCP | 是否支持订阅 |
+| acp.actions | ACP | ACP 动作定义列表 |
+| acp.actions[].actionType | ACP | 动作类型 (TASK/QUERY/COMMAND/EVENT) |
+| acp.actions[].inputSchema | ACP | 动作输入参数 Schema (JSON Schema) |
+| acp.actions[].outputSchema | ACP | 动作输出参数 Schema (JSON Schema) |
+| acp.actions[].asynchronous | ACP | 是否异步执行 |
+| acp.actions[].requiredPermissions | ACP | 所需权限列表 |
+| acp.messageTypes | ACP | 消息类型定义列表 |
+| acp.messageTypes[].direction | ACP | 消息方向 (INBOUND/OUTBOUND/BIDIRECTIONAL) |
+| acp.messageTypes[].schema | ACP | 消息 Schema (JSON Schema) |
+| acp.events | ACP | 事件定义列表 |
+| acp.events[].eventType | ACP | 事件类型 (STATE_CHANGE/PROGRESS/ERROR/CUSTOM) |
+| acp.events[].schema | ACP | 事件 Schema (JSON Schema) |
+| a2a.taskDefinitions | A2A | 任务定义列表 |
+| a2a.taskDefinitions[].inputSchema | A2A | 任务输入参数 Schema (JSON Schema) |
+| a2a.taskDefinitions[].outputSchema | A2A | 任务输出参数 Schema (JSON Schema) |
+| a2a.taskDefinitions[].statuses | A2A | 任务状态定义 (含状态流转) |
+| a2a.taskDefinitions[].retryPolicy | A2A | 重试策略 |
+| a2a.taskDefinitions[].streaming | A2A | 是否支持流式输出 |
+| a2a.agentCard.capabilitiesList | A2A | Agent 能力列表 (含 inputSchema/outputSchema) |
 
 ---
 
@@ -673,8 +719,352 @@ public abstract class ProtocolConfig {
      * 认证方式
      */
     private String authenticationType;
+    
+    /**
+     * 接口定义列表（该服务暴露的所有端点）
+     */
+    private List<EndpointDefinition> endpoints;
 }
-```
+
+/**
+ * 统一端点定义
+ * 描述服务暴露的单个 API 端点，适用于所有协议类型
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class EndpointDefinition {
+    
+    /**
+     * 端点唯一标识
+     */
+    private String endpointId;
+    
+    /**
+     * 端点名称
+     */
+    private String name;
+    
+    /**
+     * 端点描述
+     */
+    private String description;
+    
+    /**
+     * HTTP 方法 (GET/POST/PUT/DELETE/PATCH)
+     * 对于非 HTTP 协议，映射为对应的操作类型
+     */
+    private HttpMethod method;
+    
+    /**
+     * 端点路径（相对于 basePath）
+     */
+    private String path;
+    
+    /**
+     * 请求参数列表
+     */
+    private List<ParameterDefinition> parameters;
+    
+    /**
+     * 请求体定义
+     */
+    private SchemaDefinition requestBody;
+    
+    /**
+     * 响应体定义
+     */
+    private SchemaDefinition response;
+    
+    /**
+     * 需要的请求头
+     */
+    private List<HeaderDefinition> requestHeaders;
+    
+    /**
+     * 响应头
+     */
+    private List<HeaderDefinition> responseHeaders;
+    
+    /**
+     * 错误响应定义
+     */
+    private List<ErrorDefinition> errorResponses;
+    
+    /**
+     * 是否支持流式响应
+     */
+    private Boolean streaming;
+    
+    /**
+     * 超时时间（毫秒）
+     */
+    private Long timeout;
+    
+    /**
+     * 标签（用于分类和筛选）
+     */
+    private Map<String, String> tags;
+}
+
+public enum HttpMethod {
+    GET("GET"),
+    POST("POST"),
+    PUT("PUT"),
+    DELETE("DELETE"),
+    PATCH("PATCH"),
+    HEAD("HEAD"),
+    OPTIONS("OPTIONS");
+    
+    private final String method;
+}
+
+/**
+ * 参数定义
+ * 支持 query、path、header、cookie 等参数位置
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ParameterDefinition {
+    
+    /**
+     * 参数名
+     */
+    private String name;
+    
+    /**
+     * 参数描述
+     */
+    private String description;
+    
+    /**
+     * 参数位置: query / path / header / cookie
+     */
+    private ParameterLocation location;
+    
+    /**
+     * 参数类型: string, integer, number, boolean, array, object
+     */
+    private String type;
+    
+    /**
+     * 是否必填
+     */
+    private Boolean required;
+    
+    /**
+     * 默认值
+     */
+    private Object defaultValue;
+    
+    /**
+     * 枚举值列表
+     */
+    private List<Object> enumValues;
+    
+    /**
+     * 值示例
+     */
+    private Object example;
+    
+    /**
+     * 值格式（如 date-time, email, uri 等）
+     */
+    private String format;
+    
+    /**
+     * 最小值（数字类型）
+     */
+    private Object minimum;
+    
+    /**
+     * 最大值（数字类型）
+     */
+    private Object maximum;
+    
+    /**
+     * 正则表达式校验
+     */
+    private String pattern;
+    
+    /**
+     * 当 type=array 时，元素类型
+     */
+    private String itemsType;
+}
+
+public enum ParameterLocation {
+    QUERY("query"),
+    PATH("path"),
+    HEADER("header"),
+    COOKIE("cookie");
+    
+    private final String location;
+}
+
+/**
+ * Schema 定义
+ * 使用 JSON Schema 规范描述请求体/响应体结构
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class SchemaDefinition {
+    
+    /**
+     * Schema 类型: object, array, string, integer, number, boolean
+     */
+    private String type;
+    
+    /**
+     * 对象属性定义
+     */
+    private Map<String, SchemaProperty> properties;
+    
+    /**
+     * 必填属性列表
+     */
+    private List<String> required;
+    
+    /**
+     * 当 type=array 时，元素的 Schema
+     */
+    private SchemaProperty items;
+    
+    /**
+     * 描述
+     */
+    private String description;
+    
+    /**
+     * 示例
+     */
+    private Object example;
+}
+
+/**
+ * Schema 属性定义
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class SchemaProperty {
+    
+    /**
+     * 属性类型
+     */
+    private String type;
+    
+    /**
+     * 属性描述
+     */
+    private String description;
+    
+    /**
+     * 是否必填
+     */
+    private Boolean required;
+    
+    /**
+     * 默认值
+     */
+    private Object defaultValue;
+    
+    /**
+     * 枚举值
+     */
+    private List<Object> enumValues;
+    
+    /**
+     * 值示例
+     */
+    private Object example;
+    
+    /**
+     * 格式
+     */
+    private String format;
+    
+    /**
+     * 嵌套属性（对象类型）
+     */
+    private Map<String, SchemaProperty> properties;
+    
+    /**
+     * 数组元素类型
+     */
+    private SchemaProperty items;
+}
+
+/**
+ * Header 定义
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class HeaderDefinition {
+    
+    /**
+     * Header 名称
+     */
+    private String name;
+    
+    /**
+     * Header 描述
+     */
+    private String description;
+    
+    /**
+     * 是否必填
+     */
+    private Boolean required;
+    
+    /**
+     * 值类型
+     */
+    private String type;
+    
+    /**
+     * 值示例
+     */
+    private String example;
+}
+
+/**
+ * 错误响应定义
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ErrorDefinition {
+    
+    /**
+     * HTTP 状态码
+     */
+    private Integer statusCode;
+    
+    /**
+     * 错误码
+     */
+    private String errorCode;
+    
+    /**
+     * 错误描述
+     */
+    private String description;
+    
+    /**
+     * 响应体 Schema
+     */
+    private SchemaDefinition schema;
+}
 
 #### 4.2.1 API 服务协议配置
 
@@ -714,6 +1104,16 @@ public class ApiProtocolConfig extends ProtocolConfig {
      * 限流配置
      */
     private ApiRateLimitConfig rateLimitConfig;
+    
+    /**
+     * API 版本管理
+     */
+    private String apiVersion;
+    
+    /**
+     * 通用响应头
+     */
+    private List<HeaderDefinition> commonHeaders;
 }
 
 public enum ApiType {
@@ -800,6 +1200,11 @@ public class McpProtocolConfig extends ProtocolConfig {
      * 提示模板列表
      */
     private List<McpPromptDefinition> prompts;
+    
+    /**
+     * 采样支持
+     */
+    private McpSamplingConfig sampling;
 }
 
 public enum McpTransportType {
@@ -820,6 +1225,7 @@ public class McpServerCapabilities {
     private Boolean resources;
     private Boolean prompts;
     private Boolean logging;
+    private Boolean sampling;
 }
 
 @Data
@@ -830,29 +1236,169 @@ public class McpClientCapabilities {
     private Boolean tools;
     private Boolean resources;
     private Boolean prompts;
+    private Boolean sampling;
 }
 
+/**
+ * MCP 工具定义
+ * 描述 MCP Server 提供的工具及其调用接口
+ */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class McpToolDefinition {
+    
+    /**
+     * 工具名称（唯一标识）
+     */
     private String name;
+    
+    /**
+     * 工具描述
+     */
     private String description;
+    
+    /**
+     * 输入参数 Schema（JSON Schema 格式）
+     */
     private String inputSchema;
+    
+    /**
+     * 输出参数 Schema（JSON Schema 格式）
+     */
+    private String outputSchema;
+    
+    /**
+     * 是否支持注解（annotations）
+     */
+    private McpToolAnnotations annotations;
+    
+    /**
+     * 请求示例
+     */
+    private List<McpToolExample> examples;
+    
+    /**
+     * 超时时间（毫秒）
+     */
+    private Long timeout;
+    
+    /**
+     * 是否需要确认才能执行
+     */
+    private Boolean requiresConfirmation;
+    
+    /**
+     * 工具分类标签
+     */
+    private List<String> tags;
 }
 
+/**
+ * MCP 工具注解
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class McpToolAnnotations {
+    
+    /**
+     * 工具是否只读（不产生副作用）
+     */
+    private Boolean readOnlyHint;
+    
+    /**
+     * 工具是否具有破坏性
+     */
+    private Boolean destructiveHint;
+    
+    /**
+     * 工具是否具有幂等性
+     */
+    private Boolean idempotentHint;
+    
+    /**
+     * 工具是否开放世界（可访问外部资源）
+     */
+    private Boolean openWorldHint;
+}
+
+/**
+ * MCP 工具调用示例
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class McpToolExample {
+    
+    /**
+     * 示例名称
+     */
+    private String name;
+    
+    /**
+     * 示例描述
+     */
+    private String description;
+    
+    /**
+     * 请求参数示例（JSON）
+     */
+    private String inputExample;
+    
+    /**
+     * 响应结果示例（JSON）
+     */
+    private String outputExample;
+}
+
+/**
+ * MCP 资源定义
+ * 描述 MCP Server 提供的可读取资源
+ */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class McpResourceDefinition {
+    
+    /**
+     * 资源 URI
+     */
     private String uri;
+    
+    /**
+     * 资源名称
+     */
     private String name;
+    
+    /**
+     * 资源描述
+     */
     private String description;
+    
+    /**
+     * MIME 类型
+     */
     private String mimeType;
+    
+    /**
+     * 是否支持订阅
+     */
+    private Boolean subscribable;
+    
+    /**
+     * 资源模板 URI（支持动态参数）
+     */
+    private String uriTemplate;
 }
 
+/**
+ * MCP 提示模板定义
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -861,6 +1407,11 @@ public class McpPromptDefinition {
     private String name;
     private String description;
     private List<McpPromptArgument> arguments;
+    
+    /**
+     * 提示模板内容
+     */
+    private String template;
 }
 
 @Data
@@ -871,6 +1422,46 @@ public class McpPromptArgument {
     private String name;
     private String description;
     private Boolean required;
+    
+    /**
+     * 参数类型
+     */
+    private String type;
+    
+    /**
+     * 参数默认值
+     */
+    private String defaultValue;
+}
+
+/**
+ * MCP 采样配置
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class McpSamplingConfig {
+    
+    /**
+     * 是否支持采样
+     */
+    private Boolean enabled;
+    
+    /**
+     * 支持的模型列表
+     */
+    private List<String> supportedModels;
+    
+    /**
+     * 最大上下文窗口
+     */
+    private Integer maxContextWindow;
+    
+    /**
+     * 是否支持流式采样
+     */
+    private Boolean streaming;
 }
 ```
 
@@ -913,12 +1504,29 @@ public class AcpProtocolConfig extends ProtocolConfig {
      * 超时配置
      */
     private AcpTimeoutConfig timeoutConfig;
+    
+    /**
+     * 消息类型定义
+     */
+    private List<AcpMessageType> messageTypes;
+    
+    /**
+     * 动作（Action）定义列表
+     */
+    private List<AcpActionDefinition> actions;
+    
+    /**
+     * 事件订阅定义
+     */
+    private List<AcpEventDefinition> events;
 }
 
 public enum AcpInteractionMode {
     SYNCHRONOUS("同步交互"),
     ASYNCHRONOUS("异步交互"),
-    STREAMING("流式交互");
+    STREAMING("流式交互"),
+    REQUEST_REPLY("请求-回复"),
+    FIRE_AND_FORGET("发射后不管");
     
     private final String description;
 }
@@ -933,6 +1541,8 @@ public class AcpCapabilities {
     private Boolean promptTemplates;
     private Boolean streaming;
     private Boolean multiTurn;
+    private Boolean pubSub;
+    private Boolean taskManagement;
 }
 
 @Data
@@ -943,6 +1553,207 @@ public class AcpTimeoutConfig {
     private Integer requestTimeout;
     private Integer connectionTimeout;
     private Integer streamingTimeout;
+    private Integer taskTimeout;
+}
+
+/**
+ * ACP 消息类型定义
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class AcpMessageType {
+    
+    /**
+     * 消息类型名称
+     */
+    private String name;
+    
+    /**
+     * 消息类型描述
+     */
+    private String description;
+    
+    /**
+     * 消息方向: INBOUND / OUTBOUND / BIDIRECTIONAL
+     */
+    private AcpMessageDirection direction;
+    
+    /**
+     * 消息格式
+     */
+    private String format;
+    
+    /**
+     * 消息 Schema（JSON Schema 格式）
+     */
+    private String schema;
+    
+    /**
+     * 是否支持压缩
+     */
+    private Boolean compressible;
+    
+    /**
+     * 最大消息大小（字节）
+     */
+    private Long maxMessageSize;
+}
+
+public enum AcpMessageDirection {
+    INBOUND("入站消息"),
+    OUTBOUND("出站消息"),
+    BIDIRECTIONAL("双向消息");
+    
+    private final String description;
+}
+
+/**
+ * ACP 动作定义
+ * 描述 Agent 可执行的动作及其参数
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class AcpActionDefinition {
+    
+    /**
+     * 动作名称
+     */
+    private String name;
+    
+    /**
+     * 动作描述
+     */
+    private String description;
+    
+    /**
+     * 动作类型: TASK / QUERY / COMMAND / EVENT
+     */
+    private AcpActionType actionType;
+    
+    /**
+     * 输入参数 Schema（JSON Schema 格式）
+     */
+    private String inputSchema;
+    
+    /**
+     * 输出参数 Schema（JSON Schema 格式）
+     */
+    private String outputSchema;
+    
+    /**
+     * 是否异步执行
+     */
+    private Boolean asynchronous;
+    
+    /**
+     * 超时时间（毫秒）
+     */
+    private Long timeout;
+    
+    /**
+     * 权限要求
+     */
+    private List<String> requiredPermissions;
+    
+    /**
+     * 请求示例
+     */
+    private List<AcpActionExample> examples;
+    
+    /**
+     * 错误码定义
+     */
+    private List<AcpErrorDefinition> errorCodes;
+}
+
+public enum AcpActionType {
+    TASK("任务执行"),
+    QUERY("查询"),
+    COMMAND("命令"),
+    EVENT("事件");
+    
+    private final String description;
+}
+
+/**
+ * ACP 动作调用示例
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class AcpActionExample {
+    private String name;
+    private String description;
+    private String inputExample;
+    private String outputExample;
+}
+
+/**
+ * ACP 错误码定义
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class AcpErrorDefinition {
+    private String errorCode;
+    private String description;
+    private String httpStatusCode;
+}
+
+/**
+ * ACP 事件定义
+ * 描述 Agent 发布的事件及其格式
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class AcpEventDefinition {
+    
+    /**
+     * 事件名称
+     */
+    private String name;
+    
+    /**
+     * 事件描述
+     */
+    private String description;
+    
+    /**
+     * 事件类型: STATE_CHANGE / PROGRESS / ERROR / CUSTOM
+     */
+    private AcpEventType eventType;
+    
+    /**
+     * 事件 Schema（JSON Schema 格式）
+     */
+    private String schema;
+    
+    /**
+     * 是否支持过滤
+     */
+    private Boolean filterable;
+    
+    /**
+     * 事件示例
+     */
+    private String example;
+}
+
+public enum AcpEventType {
+    STATE_CHANGE("状态变更"),
+    PROGRESS("进度更新"),
+    ERROR("错误事件"),
+    CUSTOM("自定义事件");
+    
+    private final String description;
 }
 ```
 
@@ -985,6 +1796,16 @@ public class A2aProtocolConfig extends ProtocolConfig {
      * 超时配置
      */
     private A2aTimeoutConfig timeoutConfig;
+    
+    /**
+     * 任务定义列表
+     */
+    private List<A2aTaskDefinition> taskDefinitions;
+    
+    /**
+     * 任务状态定义
+     */
+    private List<A2aTaskStatusDefinition> taskStatuses;
 }
 
 @Data
@@ -1003,6 +1824,56 @@ public class AgentCard {
     private List<A2aOutputMode> supportedOutputModes;
     private A2aAuthentication authentication;
     private List<String> tags;
+    
+    /**
+     * Agent 提供的能力列表
+     */
+    private List<A2aCapability> capabilitiesList;
+}
+
+/**
+ * A2A 能力定义
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class A2aCapability {
+    
+    /**
+     * 能力名称
+     */
+    private String name;
+    
+    /**
+     * 能力描述
+     */
+    private String description;
+    
+    /**
+     * 能力版本
+     */
+    private String version;
+    
+    /**
+     * 输入 Schema（JSON Schema 格式）
+     */
+    private String inputSchema;
+    
+    /**
+     * 输出 Schema（JSON Schema 格式）
+     */
+    private String outputSchema;
+    
+    /**
+     * 是否需要认证
+     */
+    private Boolean requiresAuth;
+    
+    /**
+     * 超时时间（毫秒）
+     */
+    private Long timeout;
 }
 
 @Data
@@ -1013,12 +1884,15 @@ public class A2aCapabilities {
     private Boolean streaming;
     private Boolean pushNotifications;
     private Boolean stateTransitionHistory;
+    private Boolean longRunningTasks;
+    private Boolean multiTurn;
 }
 
 public enum A2aInputMode {
     TEXT("文本"),
     FILE("文件"),
-    STRUCTURED_DATA("结构化数据");
+    STRUCTURED_DATA("结构化数据"),
+    MULTIMODAL("多模态");
     
     private final String description;
 }
@@ -1026,7 +1900,8 @@ public enum A2aInputMode {
 public enum A2aOutputMode {
     TEXT("文本"),
     FILE("文件"),
-    STRUCTURED_DATA("结构化数据");
+    STRUCTURED_DATA("结构化数据"),
+    MULTIMODAL("多模态");
     
     private final String description;
 }
@@ -1075,6 +1950,137 @@ public class A2aApiKeyConfig {
 public class A2aTimeoutConfig {
     private Integer taskExecutionTimeout;
     private Integer connectionTimeout;
+    private Integer pushNotificationTimeout;
+}
+
+/**
+ * A2A 任务定义
+ * 描述 Agent 可执行的任务类型及其参数
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class A2aTaskDefinition {
+    
+    /**
+     * 任务类型名称
+     */
+    private String taskType;
+    
+    /**
+     * 任务描述
+     */
+    private String description;
+    
+    /**
+     * 输入参数 Schema（JSON Schema 格式）
+     */
+    private String inputSchema;
+    
+    /**
+     * 输出参数 Schema（JSON Schema 格式）
+     */
+    private String outputSchema;
+    
+    /**
+     * 任务状态定义
+     */
+    private List<A2aTaskStatusDefinition> statuses;
+    
+    /**
+     * 是否支持流式输出
+     */
+    private Boolean streaming;
+    
+    /**
+     * 超时时间（毫秒）
+     */
+    private Long timeout;
+    
+    /**
+     * 重试策略
+     */
+    private A2aRetryPolicy retryPolicy;
+    
+    /**
+     * 任务示例
+     */
+    private List<A2aTaskExample> examples;
+}
+
+/**
+ * A2A 任务状态定义
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class A2aTaskStatusDefinition {
+    
+    /**
+     * 状态名称
+     */
+    private String status;
+    
+    /**
+     * 状态描述
+     */
+    private String description;
+    
+    /**
+     * 允许的下一状态列表
+     */
+    private List<String> allowedNextStatuses;
+}
+
+/**
+ * A2A 重试策略
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class A2aRetryPolicy {
+    
+    /**
+     * 是否允许重试
+     */
+    private Boolean enabled;
+    
+    /**
+     * 最大重试次数
+     */
+    private Integer maxRetries;
+    
+    /**
+     * 初始重试间隔（毫秒）
+     */
+    private Long initialInterval;
+    
+    /**
+     * 重试间隔倍数
+     */
+    private Double multiplier;
+    
+    /**
+     * 最大重试间隔（毫秒）
+     */
+    private Long maxInterval;
+}
+
+/**
+ * A2A 任务调用示例
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class A2aTaskExample {
+    private String name;
+    private String description;
+    private String inputExample;
+    private String outputExample;
 }
 ```
 
@@ -1497,6 +2503,134 @@ public class ServiceMetadata extends BaseMetadata {
 }
 
 /**
+ * 构建 API 类型 + Agent 角色的服务元数据示例（包含完整端点定义）
+ */
+public ServiceMetadata buildApiAgentMetadata() {
+    return ServiceMetadata.builder()
+        .resourceId(UUID.randomUUID().toString())
+        .serviceType(ServiceType.API)
+        .role(ServiceRole.AGENT)
+        .name("customer-service-agent")
+        .version("1.0.0")
+        .description("客服智能体，支持多轮对话和问题解答")
+        .serviceAddress("10.0.1.100:8080")
+        .capabilities(List.of("multi-turn-dialogue", "intent-recognition", "knowledge-qa"))
+        .tags(Map.of("domain", "customer-service", "language", "zh-CN"))
+        .status(ServiceStatus.UP)
+        .weight(80)
+        .protocolConfig(ApiProtocolConfig.builder()
+            .protocolVersion("1.0")
+            .apiType(ApiType.REST)
+            .apiVersion("v1")
+            .basePath("/api/v1/agent")
+            .authenticationType("BEARER_TOKEN")
+            .authTypes(List.of(ApiAuthType.BEARER_TOKEN))
+            .rateLimitConfig(ApiRateLimitConfig.builder()
+                .requestsPerSecond(100)
+                .requestsPerMinute(5000)
+                .build())
+            .endpoints(List.of(
+                EndpointDefinition.builder()
+                    .endpointId("chat")
+                    .name("对话接口")
+                    .description("与客服Agent进行对话交互")
+                    .method(HttpMethod.POST)
+                    .path("/chat")
+                    .parameters(List.of(
+                        ParameterDefinition.builder()
+                            .name("sessionId")
+                            .description("会话ID")
+                            .location(ParameterLocation.HEADER)
+                            .type("string")
+                            .required(false)
+                            .example("session-12345")
+                            .build(),
+                        ParameterDefinition.builder()
+                            .name("stream")
+                            .description("是否启用流式输出")
+                            .location(ParameterLocation.QUERY)
+                            .type("boolean")
+                            .required(false)
+                            .defaultValue(false)
+                            .build()
+                    ))
+                    .requestBody(SchemaDefinition.builder()
+                        .type("object")
+                        .properties(Map.of(
+                            "message", SchemaProperty.builder()
+                                .type("string")
+                                .description("用户消息内容")
+                                .required(true)
+                                .example("你好，我想咨询产品信息")
+                                .build(),
+                            "history", SchemaProperty.builder()
+                                .type("array")
+                                .description("历史对话")
+                                .items(SchemaProperty.builder()
+                                    .type("object")
+                                    .properties(Map.of(
+                                        "role", SchemaProperty.builder().type("string").build(),
+                                        "content", SchemaProperty.builder().type("string").build()
+                                    ))
+                                    .build())
+                                .required(false)
+                                .build()
+                        ))
+                        .required(List.of("message"))
+                        .build())
+                    .response(SchemaDefinition.builder()
+                        .type("object")
+                        .properties(Map.of(
+                            "reply", SchemaProperty.builder()
+                                .type("string")
+                                .description("Agent回复内容")
+                                .build(),
+                            "confidence", SchemaProperty.builder()
+                                .type("number")
+                                .description("回复置信度")
+                                .build()
+                        ))
+                        .build())
+                    .streaming(true)
+                    .timeout(30000L)
+                    .build(),
+                EndpointDefinition.builder()
+                    .endpointId("health")
+                    .name("健康检查接口")
+                    .method(HttpMethod.GET)
+                    .path("/health")
+                    .response(SchemaDefinition.builder()
+                        .type("object")
+                        .properties(Map.of(
+                            "status", SchemaProperty.builder().type("string").build()
+                        ))
+                        .build())
+                    .build()
+            ))
+            .build())
+        .roleConfig(AgentRoleConfig.builder()
+            .summary("智能客服Agent，能够理解用户意图并提供精准的问题解答")
+            .useCases(List.of("售前咨询", "售后服务", "投诉处理", "产品推荐"))
+            .agentType(AgentType.PROACTIVE)
+            .inputDescription("用户自然语言输入，支持文本和语音转文本")
+            .outputDescription("结构化回复，包含回答内容、置信度、推荐操作")
+            .capabilities(AgentCapabilityDefinition.builder()
+                .taskTypes(List.of("dialogue", "qa", "recommendation"))
+                .supportedLanguages(List.of("zh-CN", "en-US"))
+                .contextWindowSize(32000)
+                .streamingSupport(true)
+                .multiModalSupport(false)
+                .build())
+            .tools(List.of(ToolDefinition.builder()
+                .name("knowledge_search")
+                .description("知识库检索")
+                .parametersSchema("{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\"}}}")
+                .build()))
+            .build())
+        .build();
+}
+
+/**
  * 构建 API 类型 + Agent 角色的服务元数据示例
  */
 public ServiceMetadata buildApiAgentMetadata() {
@@ -1642,6 +2776,212 @@ public ServiceMetadata buildA2aAgentMetadata() {
             .build())
         .build();
 }
+
+/**
+ * 构建 MCP 类型 + Plugin 角色的服务元数据示例（包含完整工具定义）
+ */
+public ServiceMetadata buildMcpPluginMetadata() {
+    return ServiceMetadata.builder()
+        .resourceId(UUID.randomUUID().toString())
+        .serviceType(ServiceType.MCP)
+        .role(ServiceRole.PLUGIN)
+        .name("filesystem-mcp-server")
+        .version("1.0.0")
+        .description("文件系统MCP Server，提供文件读写和目录操作能力")
+        .serviceAddress("10.0.1.104:3000")
+        .capabilities(List.of("file-read", "file-write", "directory-list"))
+        .tags(Map.of("category", "tool", "type", "filesystem"))
+        .status(ServiceStatus.UP)
+        .weight(50)
+        .protocolConfig(McpProtocolConfig.builder()
+            .protocolVersion("2024-11-05")
+            .endpointPath("/mcp")
+            .authenticationType("API_KEY")
+            .transportTypes(List.of(McpTransportType.STDIO, McpTransportType.HTTP))
+            .serverCapabilities(McpServerCapabilities.builder()
+                .tools(true).resources(true).prompts(false).logging(true).sampling(false).build())
+            .tools(List.of(
+                McpToolDefinition.builder()
+                    .name("read_file")
+                    .description("读取文件内容")
+                    .inputSchema("{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"文件路径\"}},\"required\":[\"path\"]}")
+                    .outputSchema("{\"type\":\"object\",\"properties\":{\"content\":{\"type\":\"string\",\"description\":\"文件内容\"},\"size\":{\"type\":\"integer\",\"description\":\"文件大小\"}}}")
+                    .annotations(McpToolAnnotations.builder()
+                        .readOnlyHint(true)
+                        .destructiveHint(false)
+                        .idempotentHint(true)
+                        .openWorldHint(false)
+                        .build())
+                    .examples(List.of(
+                        McpToolExample.builder()
+                            .name("读取配置文件")
+                            .description("读取JSON配置文件")
+                            .inputExample("{\"path\":\"/etc/config.json\"}")
+                            .outputExample("{\"content\":\"{...}\",\"size\":1024}")
+                            .build()
+                    ))
+                    .build(),
+                McpToolDefinition.builder()
+                    .name("write_file")
+                    .description("写入文件内容")
+                    .inputSchema("{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"},\"content\":{\"type\":\"string\"}},\"required\":[\"path\",\"content\"]}")
+                    .annotations(McpToolAnnotations.builder()
+                        .readOnlyHint(false)
+                        .destructiveHint(true)
+                        .idempotentHint(true)
+                        .openWorldHint(false)
+                        .build())
+                    .requiresConfirmation(true)
+                    .build(),
+                McpToolDefinition.builder()
+                    .name("list_directory")
+                    .description("列出目录内容")
+                    .inputSchema("{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}")
+                    .outputSchema("{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"type\":{\"type\":\"string\",\"enum\":[\"file\",\"directory\"]},\"size\":{\"type\":\"integer\"}}}}")
+                    .build()
+            ))
+            .resources(List.of(
+                McpResourceDefinition.builder()
+                    .uri("file:///workspace")
+                    .name("workspace")
+                    .description("工作空间根目录")
+                    .mimeType("inode/directory")
+                    .subscribable(false)
+                    .build()
+            ))
+            .build())
+        .roleConfig(PluginRoleConfig.builder()
+            .summary("文件系统MCP插件，提供文件读写和目录操作")
+            .useCases(List.of("文件管理", "目录浏览", "文件搜索"))
+            .pluginType(PluginType.TOOL)
+            .configurationGuide("需要配置访问路径和权限")
+            .build())
+        .build();
+}
+
+/**
+ * 构建 A2A 类型 + Agent 角色的服务元数据示例（包含完整任务定义）
+ */
+public ServiceMetadata buildA2aAgentMetadata() {
+    return ServiceMetadata.builder()
+        .resourceId(UUID.randomUUID().toString())
+        .serviceType(ServiceType.A2A)
+        .role(ServiceRole.AGENT)
+        .name("research-assistant-agent")
+        .version("1.0.0")
+        .description("研究助手Agent，支持A2A协议与其他Agent协作")
+        .serviceAddress("10.0.1.106:8086")
+        .capabilities(List.of("research", "analysis", "report-generation"))
+        .tags(Map.of("domain", "research", "collaboration", "true"))
+        .status(ServiceStatus.UP)
+        .weight(65)
+        .protocolConfig(A2aProtocolConfig.builder()
+            .endpointPath("/a2a")
+            .authenticationType("OAUTH2")
+            .agentCard(AgentCard.builder()
+                .name("Research Assistant Agent")
+                .description("专业的研究助手，能够进行深度信息收集和分析")
+                .url("https://agent.example.com/a2a/research-assistant")
+                .version("1.0.0")
+                .capabilities(A2aCapabilities.builder()
+                    .streaming(true)
+                    .pushNotifications(true)
+                    .stateTransitionHistory(true)
+                    .longRunningTasks(true)
+                    .multiTurn(true)
+                    .build())
+                .defaultInputMode(A2aInputMode.TEXT)
+                .supportedInputModes(List.of(A2aInputMode.TEXT, A2aInputMode.FILE))
+                .supportedOutputModes(List.of(A2aOutputMode.TEXT, A2aOutputMode.FILE, A2aOutputMode.STRUCTURED_DATA))
+                .authentication(A2aAuthentication.builder()
+                    .authType(A2aAuthType.OAUTH2)
+                    .oauth2Config(A2aOAuth2Config.builder()
+                        .authorizationServerUrl("https://auth.example.com")
+                        .clientId("research-agent-client")
+                        .scopes(List.of("agent:read", "agent:execute"))
+                        .build())
+                    .build())
+                .tags(List.of("research", "analysis", "reporting"))
+                .capabilitiesList(List.of(
+                    A2aCapability.builder()
+                        .name("web_research")
+                        .description("网络信息搜索与收集")
+                        .version("1.0.0")
+                        .inputSchema("{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\"},\"maxResults\":{\"type\":\"integer\"}}}")
+                        .outputSchema("{\"type\":\"object\",\"properties\":{\"results\":{\"type\":\"array\"},\"summary\":{\"type\":\"string\"}}}")
+                        .build(),
+                    A2aCapability.builder()
+                        .name("report_generation")
+                        .description("生成研究报告")
+                        .version("1.0.0")
+                        .inputSchema("{\"type\":\"object\",\"properties\":{\"topic\":{\"type\":\"string\"},\"data\":{\"type\":\"array\"}}}")
+                        .outputSchema("{\"type\":\"object\",\"properties\":{\"report\":{\"type\":\"string\"},\"format\":{\"type\":\"string\"}}}")
+                        .build()
+                ))
+                .build())
+            .supportedTaskTypes(List.of("research", "analysis", "report-generation"))
+            .taskDefinitions(List.of(
+                A2aTaskDefinition.builder()
+                    .taskType("research")
+                    .description("执行网络研究任务")
+                    .inputSchema("{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\",\"description\":\"研究问题\"},\"depth\":{\"type\":\"string\",\"enum\":[\"shallow\",\"deep\"],\"description\":\"研究深度\"}}}")
+                    .outputSchema("{\"type\":\"object\",\"properties\":{\"findings\":{\"type\":\"array\"},\"sources\":{\"type\":\"array\"},\"confidence\":{\"type\":\"number\"}}}")
+                    .statuses(List.of(
+                        A2aTaskStatusDefinition.builder()
+                            .status("PENDING")
+                            .description("任务等待执行")
+                            .allowedNextStatuses(List.of("RUNNING", "CANCELLED"))
+                            .build(),
+                        A2aTaskStatusDefinition.builder()
+                            .status("RUNNING")
+                            .description("任务执行中")
+                            .allowedNextStatuses(List.of("COMPLETED", "FAILED"))
+                            .build(),
+                        A2aTaskStatusDefinition.builder()
+                            .status("COMPLETED")
+                            .description("任务已完成")
+                            .build(),
+                        A2aTaskStatusDefinition.builder()
+                            .status("FAILED")
+                            .description("任务执行失败")
+                            .build()
+                    ))
+                    .streaming(true)
+                    .timeout(300000L)
+                    .retryPolicy(A2aRetryPolicy.builder()
+                        .enabled(true)
+                        .maxRetries(3)
+                        .initialInterval(1000L)
+                        .multiplier(2.0)
+                        .maxInterval(10000L)
+                        .build())
+                    .build(),
+                A2aTaskDefinition.builder()
+                    .taskType("report-generation")
+                    .description("生成研究报告")
+                    .inputSchema("{\"type\":\"object\",\"properties\":{\"data\":{\"type\":\"array\",\"description\":\"研究数据\"},\"template\":{\"type\":\"string\",\"description\":\"报告模板\"}}}")
+                    .outputSchema("{\"type\":\"object\",\"properties\":{\"report\":{\"type\":\"string\"},\"sections\":{\"type\":\"array\"}}}")
+                    .streaming(false)
+                    .timeout(600000L)
+                    .build()
+            ))
+            .timeoutConfig(A2aTimeoutConfig.builder()
+                .taskExecutionTimeout(300)
+                .connectionTimeout(10)
+                .pushNotificationTimeout(5)
+                .build())
+            .build())
+        .roleConfig(AgentRoleConfig.builder()
+            .summary("研究助手Agent，擅长信息收集、分析和报告生成")
+            .useCases(List.of("市场调研", "竞品分析", "技术调研", "报告撰写"))
+            .agentType(AgentType.MULTI_AGENT)
+            .capabilities(AgentCapabilityDefinition.builder()
+                .taskTypes(List.of("research", "analysis", "writing"))
+                .streamingSupport(true)
+                .build())
+            .build())
+        .build();
+}
 ```
 
 ### 4.9 Nacos 注册元数据详细定义
@@ -1668,12 +3008,15 @@ public ServiceMetadata buildA2aAgentMetadata() {
   "updateTime": "2024-01-15T10:00:00Z",
 
   "api.apiType": "REST",
+  "api.apiVersion": "v1",
   "api.basePath": "/api/v1/agent",
   "api.authTypes": "[\"BEARER_TOKEN\"]",
   "api.requestsPerSecond": "100",
   "api.requestsPerMinute": "5000",
   "api.requestsPerDay": "100000",
   "api.concurrentLimit": "50",
+
+  "api.endpoints": "[{\"endpointId\":\"chat\",\"name\":\"对话接口\",\"method\":\"POST\",\"path\":\"/chat\",\"description\":\"与客服Agent进行对话交互\",\"streaming\":true,\"timeout\":30000,\"parameters\":[{\"name\":\"sessionId\",\"location\":\"header\",\"type\":\"string\",\"required\":false},{\"name\":\"stream\",\"location\":\"query\",\"type\":\"boolean\",\"required\":false}],\"requestBody\":{\"type\":\"object\",\"properties\":{\"message\":{\"type\":\"string\",\"description\":\"用户消息内容\",\"required\":true},\"history\":{\"type\":\"array\",\"description\":\"历史对话\",\"required\":false}}},\"response\":{\"type\":\"object\",\"properties\":{\"reply\":{\"type\":\"string\",\"description\":\"Agent回复\"},\"confidence\":{\"type\":\"number\",\"description\":\"置信度\"}}}},{\"endpointId\":\"health\",\"name\":\"健康检查\",\"method\":\"GET\",\"path\":\"/health\",\"response\":{\"type\":\"object\",\"properties\":{\"status\":{\"type\":\"string\"}}}}]",
 
   "role.agentType": "PROACTIVE",
   "role.summary": "智能客服Agent，能够理解用户意图并提供精准的问题解答",
@@ -1850,8 +3193,11 @@ public ServiceMetadata buildA2aAgentMetadata() {
   "mcp.serverCapabilities.resources": "true",
   "mcp.serverCapabilities.prompts": "false",
   "mcp.serverCapabilities.logging": "true",
-  "mcp.tools": "[{\"name\":\"read_file\",\"description\":\"读取文件内容\",\"inputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"path\\\":{\\\"type\\\":\\\"string\\\",\\\"description\\\":\\\"文件路径\\\"}},\\\"required\\\":[\\\"path\\\"]}\"},{\"name\":\"write_file\",\"description\":\"写入文件内容\",\"inputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"path\\\":{\\\"type\\\":\\\"string\\\"},\\\"content\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"path\\\",\\\"content\\\"]}\"},{\"name\":\"list_directory\",\"description\":\"列出目录内容\",\"inputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"path\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"path\\\"]}\"}]",
-  "mcp.resources": "[{\"uri\":\"file:///workspace\",\"name\":\"workspace\",\"description\":\"工作空间根目录\",\"mimeType\":\"inode/directory\"}]",
+  "mcp.serverCapabilities.sampling": "false",
+
+  "mcp.tools": "[{\"name\":\"read_file\",\"description\":\"读取文件内容\",\"inputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"path\\\":{\\\"type\\\":\\\"string\\\",\\\"description\\\":\\\"文件路径\\\"}},\\\"required\\\":[\\\"path\\\"]}\",\"outputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"content\\\":{\\\"type\\\":\\\"string\\\",\\\"description\\\":\\\"文件内容\\\"},\\\"size\\\":{\\\"type\\\":\\\"integer\\\",\\\"description\\\":\\\"文件大小\\\"}}}\",\"annotations\":{\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"examples\":[{\"name\":\"读取配置文件\",\"description\":\"读取JSON配置文件\",\"inputExample\":\"{\\\"path\\\":\\\"/etc/config.json\\\"}\",\"outputExample\":\"{\\\"content\\\":\\\"{...}\\\",\\\"size\\\":1024}\"}]},{\"name\":\"write_file\",\"description\":\"写入文件内容\",\"inputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"path\\\":{\\\"type\\\":\\\"string\\\"},\\\"content\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"path\\\",\\\"content\\\"]}\",\"annotations\":{\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":true,\"openWorldHint\":false},\"requiresConfirmation\":true},{\"name\":\"list_directory\",\"description\":\"列出目录内容\",\"inputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"path\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"path\\\"]}\",\"outputSchema\":\"{\\\"type\\\":\\\"array\\\",\\\"items\\\":{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"name\\\":{\\\"type\\\":\\\"string\\\"},\\\"type\\\":{\\\"type\\\":\\\"string\\\",\\\"enum\\\":[\\\"file\\\",\\\"directory\\\"]},\\\"size\\\":{\\\"type\\\":\\\"integer\\\"}}}}\"}]",
+
+  "mcp.resources": "[{\"uri\":\"file:///workspace\",\"name\":\"workspace\",\"description\":\"工作空间根目录\",\"mimeType\":\"inode/directory\",\"subscribable\":false}]",
   "mcp.prompts": "[]",
 
   "role.pluginType": "TOOL",
@@ -1928,19 +3274,27 @@ public ServiceMetadata buildA2aAgentMetadata() {
   "a2a.agentCard.capabilities.streaming": "true",
   "a2a.agentCard.capabilities.pushNotifications": "true",
   "a2a.agentCard.capabilities.stateTransitionHistory": "true",
+  "a2a.agentCard.capabilities.longRunningTasks": "true",
+  "a2a.agentCard.capabilities.multiTurn": "true",
   "a2a.agentCard.defaultInputMode": "TEXT",
   "a2a.agentCard.supportedInputModes": "[\"TEXT\", \"FILE\"]",
-  "a2a.agentCard.supportedOutputModes": "[\"TEXT\", \"FILE\"]",
+  "a2a.agentCard.supportedOutputModes": "[\"TEXT\", \"FILE\", \"STRUCTURED_DATA\"]",
   "a2a.agentCard.tags": "[\"research\", \"analysis\", \"reporting\"]",
   "a2a.agentCard.authentication.authType": "OAUTH2",
   "a2a.agentCard.authentication.oauth2Config.authorizationServerUrl": "https://auth.example.com",
   "a2a.agentCard.authentication.oauth2Config.clientId": "research-agent-client",
   "a2a.agentCard.authentication.oauth2Config.scopes": "[\"agent:read\", \"agent:execute\"]",
+
+  "a2a.agentCard.capabilitiesList": "[{\"name\":\"web_research\",\"description\":\"网络信息搜索与收集\",\"version\":\"1.0.0\",\"inputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"query\\\":{\\\"type\\\":\\\"string\\\"},\\\"maxResults\\\":{\\\"type\\\":\\\"integer\\\"}}}\",\"outputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"results\\\":{\\\"type\\\":\\\"array\\\"},\\\"summary\\\":{\\\"type\\\":\\\"string\\\"}}}\"},{\"name\":\"report_generation\",\"description\":\"生成研究报告\",\"version\":\"1.0.0\",\"inputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"topic\\\":{\\\"type\\\":\\\"string\\\"},\\\"data\\\":{\\\"type\\\":\\\"array\\\"}}}\",\"outputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"report\\\":{\\\"type\\\":\\\"string\\\"},\\\"format\\\":{\\\"type\\\":\\\"string\\\"}}}\"}]",
+
   "a2a.supportedTaskTypes": "[\"research\", \"analysis\", \"report-generation\"]",
   "a2a.defaultInputMode": "TEXT",
   "a2a.supportedInputModes": "[\"TEXT\", \"FILE\"]",
   "a2a.taskExecutionTimeout": "300",
   "a2a.connectionTimeout": "10",
+  "a2a.pushNotificationTimeout": "5",
+
+  "a2a.taskDefinitions": "[{\"taskType\":\"research\",\"description\":\"执行网络研究任务\",\"inputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"query\\\":{\\\"type\\\":\\\"string\\\",\\\"description\\\":\\\"研究问题\\\"},\\\"depth\\\":{\\\"type\\\":\\\"string\\\",\\\"enum\\\":[\\\"shallow\\\",\\\"deep\\\"],\\\"description\\\":\\\"研究深度\\\"}}}\",\"outputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"findings\\\":{\\\"type\\\":\\\"array\\\"},\\\"sources\\\":{\\\"type\\\":\\\"array\\\"},\\\"confidence\\\":{\\\"type\\\":\\\"number\\\"}}}\",\"statuses\":[{\"status\":\"PENDING\",\"description\":\"任务等待执行\",\"allowedNextStatuses\":[\"RUNNING\",\"CANCELLED\"]},{\"status\":\"RUNNING\",\"description\":\"任务执行中\",\"allowedNextStatuses\":[\"COMPLETED\",\"FAILED\"]},{\"status\":\"COMPLETED\",\"description\":\"任务已完成\"},{\"status\":\"FAILED\",\"description\":\"任务执行失败\"}],\"streaming\":true,\"timeout\":300000,\"retryPolicy\":{\"enabled\":true,\"maxRetries\":3,\"initialInterval\":1000,\"multiplier\":2.0,\"maxInterval\":10000}},{\"taskType\":\"report-generation\",\"description\":\"生成研究报告\",\"inputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"data\\\":{\\\"type\\\":\\\"array\\\",\\\"description\\\":\\\"研究数据\\\"},\\\"template\\\":{\\\"type\\\":\\\"string\\\",\\\"description\\\":\\\"报告模板\\\"}}}\",\"outputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"report\\\":{\\\"type\\\":\\\"string\\\"},\\\"sections\\\":{\\\"type\\\":\\\"array\\\"}}}\",\"streaming\":false,\"timeout\":600000}]",
 
   "role.agentType": "MULTI_AGENT",
   "role.summary": "研究助手Agent，擅长信息收集、分析和报告生成",
@@ -1977,11 +3331,20 @@ public ServiceMetadata buildA2aAgentMetadata() {
   "acp.capabilities.promptTemplates": "true",
   "acp.capabilities.streaming": "true",
   "acp.capabilities.multiTurn": "true",
+  "acp.capabilities.pubSub": "true",
+  "acp.capabilities.taskManagement": "true",
   "acp.supportedMessageFormats": "[\"JSON\", \"Protobuf\"]",
-  "acp.supportedInteractionModes": "[\"SYNCHRONOUS\", \"ASYNCHRONOUS\", \"STREAMING\"]",
+  "acp.supportedInteractionModes": "[\"SYNCHRONOUS\", \"ASYNCHRONOUS\", \"STREAMING\", \"REQUEST_REPLY\", \"FIRE_AND_FORGET\"]",
   "acp.requestTimeout": "60",
   "acp.connectionTimeout": "10",
   "acp.streamingTimeout": "300",
+  "acp.taskTimeout": "600",
+
+  "acp.messageTypes": "[{\"name\":\"TaskRequest\",\"description\":\"任务请求消息\",\"direction\":\"INBOUND\",\"format\":\"JSON\",\"schema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"taskId\\\":{\\\"type\\\":\\\"string\\\"},\\\"taskType\\\":{\\\"type\\\":\\\"string\\\"},\\\"params\\\":{\\\"type\\\":\\\"object\\\"}}}\",\"maxMessageSize\":1048576},{\"name\":\"TaskResponse\",\"description\":\"任务响应消息\",\"direction\":\"OUTBOUND\",\"format\":\"JSON\",\"schema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"taskId\\\":{\\\"type\\\":\\\"string\\\"},\\\"status\\\":{\\\"type\\\":\\\"string\\\"},\\\"result\\\":{\\\"type\\\":\\\"object\\\"}}}\"},{\"name\":\"ProgressUpdate\",\"description\":\"进度更新消息\",\"direction\":\"OUTBOUND\",\"format\":\"JSON\"},{\"name\":\"ErrorMessage\",\"description\":\"错误消息\",\"direction\":\"BIDIRECTIONAL\",\"format\":\"JSON\"}]",
+
+  "acp.actions": "[{\"name\":\"task_decompose\",\"description\":\"将复杂任务分解为多个子任务\",\"actionType\":\"TASK\",\"inputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"task\\\":{\\\"type\\\":\\\"string\\\",\\\"description\\\":\\\"任务描述\\\"},\\\"maxSubTasks\\\":{\\\"type\\\":\\\"integer\\\",\\\"description\\\":\\\"最大子任务数\\\"}}}\",\"outputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"subTasks\\\":{\\\"type\\\":\\\"array\\\"},\\\"estimatedTime\\\":{\\\"type\\\":\\\"integer\\\"}}}\",\"asynchronous\":false,\"timeout\":30000,\"requiredPermissions\":[\"task:create\",\"agent:read\"]},{\"name\":\"agent_dispatch\",\"description\":\"将子任务分发给合适的Agent执行\",\"actionType\":\"TASK\",\"inputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"subTask\\\":{\\\"type\\\":\\\"object\\\"},\\\"agentCriteria\\\":{\\\"type\\\":\\\"object\\\"}}}\",\"outputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"taskId\\\":{\\\"type\\\":\\\"string\\\"},\\\"assignedAgent\\\":{\\\"type\\\":\\\"string\\\"}}}\",\"asynchronous\":true,\"timeout\":60000,\"requiredPermissions\":[\"task:assign\",\"agent:invoke\"]},{\"name\":\"result_aggregate\",\"description\":\"聚合多个Agent的执行结果\",\"actionType\":\"QUERY\",\"inputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"taskIds\\\":{\\\"type\\\":\\\"array\\\"},\\\"mergeStrategy\\\":{\\\"type\\\":\\\"string\\\",\\\"enum\\\":[\\\"concat\\\",\\\"merge\\\",\\\"reduce\\\"]}}}\",\"outputSchema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"result\\\":{\\\"type\\\":\\\"object\\\"},\\\"summary\\\":{\\\"type\\\":\\\"string\\\"}}}\",\"asynchronous\":false,\"timeout\":10000}]",
+
+  "acp.events": "[{\"name\":\"TaskStateChanged\",\"description\":\"任务状态变更事件\",\"eventType\":\"STATE_CHANGE\",\"filterable\":true,\"schema\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"taskId\\\":{\\\"type\\\":\\\"string\\\"},\\\"oldStatus\\\":{\\\"type\\\":\\\"string\\\"},\\\"newStatus\\\":{\\\"type\\\":\\\"string\\\"},\\\"timestamp\\\":{\\\"type\\\":\\\"string\\\"}}}\"},{\"name\":\"ProgressReport\",\"description\":\"任务进度报告事件\",\"eventType\":\"PROGRESS\",\"filterable\":true},{\"name\":\"ErrorOccurred\",\"description\":\"错误发生事件\",\"eventType\":\"ERROR\"}]",
 
   "role.agentType": "WORKFLOW",
   "role.summary": "工作流编排Agent，能够将复杂任务分解为子任务并协调多个Agent完成",
@@ -2039,6 +3402,11 @@ public class NacosMetadataBuilder {
             ProtocolConfig proto = metadata.getProtocolConfig();
             nacosMetadata.put("protocol.endpointPath", proto.getEndpointPath());
             nacosMetadata.put("protocol.authenticationType", proto.getAuthenticationType());
+            
+            // 构建端点定义
+            if (proto.getEndpoints() != null && !proto.getEndpoints().isEmpty()) {
+                nacosMetadata.put("api.endpoints", JSON.toJSONString(proto.getEndpoints()));
+            }
         }
         
         return nacosMetadata;
@@ -2052,6 +3420,9 @@ public class NacosMetadataBuilder {
         nacosMetadata.put("api.apiType", config.getApiType().name());
         nacosMetadata.put("api.basePath", config.getBasePath());
         nacosMetadata.put("api.authTypes", JSON.toJSONString(config.getAuthTypes()));
+        if (config.getApiVersion() != null) {
+            nacosMetadata.put("api.apiVersion", config.getApiVersion());
+        }
         if (config.getRateLimitConfig() != null) {
             ApiRateLimitConfig rl = config.getRateLimitConfig();
             nacosMetadata.put("api.requestsPerSecond", String.valueOf(rl.getRequestsPerSecond()));
@@ -2061,6 +3432,9 @@ public class NacosMetadataBuilder {
         }
         if (config.getExamples() != null) {
             nacosMetadata.put("api.examples", JSON.toJSONString(config.getExamples()));
+        }
+        if (config.getEndpoints() != null) {
+            nacosMetadata.put("api.endpoints", JSON.toJSONString(config.getEndpoints()));
         }
     }
     
@@ -2077,6 +3451,9 @@ public class NacosMetadataBuilder {
             nacosMetadata.put("mcp.serverCapabilities.resources", String.valueOf(caps.getResources()));
             nacosMetadata.put("mcp.serverCapabilities.prompts", String.valueOf(caps.getPrompts()));
             nacosMetadata.put("mcp.serverCapabilities.logging", String.valueOf(caps.getLogging()));
+            if (caps.getSampling() != null) {
+                nacosMetadata.put("mcp.serverCapabilities.sampling", String.valueOf(caps.getSampling()));
+            }
         }
         if (config.getTools() != null) {
             nacosMetadata.put("mcp.tools", JSON.toJSONString(config.getTools()));
@@ -2101,6 +3478,12 @@ public class NacosMetadataBuilder {
             nacosMetadata.put("acp.capabilities.resourceAccess", String.valueOf(caps.getResourceAccess()));
             nacosMetadata.put("acp.capabilities.streaming", String.valueOf(caps.getStreaming()));
             nacosMetadata.put("acp.capabilities.multiTurn", String.valueOf(caps.getMultiTurn()));
+            if (caps.getPubSub() != null) {
+                nacosMetadata.put("acp.capabilities.pubSub", String.valueOf(caps.getPubSub()));
+            }
+            if (caps.getTaskManagement() != null) {
+                nacosMetadata.put("acp.capabilities.taskManagement", String.valueOf(caps.getTaskManagement()));
+            }
         }
         nacosMetadata.put("acp.supportedMessageFormats", JSON.toJSONString(config.getSupportedMessageFormats()));
         nacosMetadata.put("acp.supportedInteractionModes", JSON.toJSONString(config.getSupportedInteractionModes()));
@@ -2108,6 +3491,18 @@ public class NacosMetadataBuilder {
             AcpTimeoutConfig tc = config.getTimeoutConfig();
             nacosMetadata.put("acp.requestTimeout", String.valueOf(tc.getRequestTimeout()));
             nacosMetadata.put("acp.connectionTimeout", String.valueOf(tc.getConnectionTimeout()));
+            if (tc.getTaskTimeout() != null) {
+                nacosMetadata.put("acp.taskTimeout", String.valueOf(tc.getTaskTimeout()));
+            }
+        }
+        if (config.getMessageTypes() != null) {
+            nacosMetadata.put("acp.messageTypes", JSON.toJSONString(config.getMessageTypes()));
+        }
+        if (config.getActions() != null) {
+            nacosMetadata.put("acp.actions", JSON.toJSONString(config.getActions()));
+        }
+        if (config.getEvents() != null) {
+            nacosMetadata.put("acp.events", JSON.toJSONString(config.getEvents()));
         }
     }
     
@@ -2125,6 +3520,9 @@ public class NacosMetadataBuilder {
             if (card.getCapabilities() != null) {
                 nacosMetadata.put("a2a.agentCard.capabilities.streaming", String.valueOf(card.getCapabilities().getStreaming()));
                 nacosMetadata.put("a2a.agentCard.capabilities.pushNotifications", String.valueOf(card.getCapabilities().getPushNotifications()));
+                if (card.getCapabilities().getLongRunningTasks() != null) {
+                    nacosMetadata.put("a2a.agentCard.capabilities.longRunningTasks", String.valueOf(card.getCapabilities().getLongRunningTasks()));
+                }
             }
             nacosMetadata.put("a2a.agentCard.defaultInputMode", card.getDefaultInputMode().name());
             nacosMetadata.put("a2a.agentCard.supportedInputModes", JSON.toJSONString(card.getSupportedInputModes()));
@@ -2132,12 +3530,21 @@ public class NacosMetadataBuilder {
             if (card.getAuthentication() != null) {
                 nacosMetadata.put("a2a.agentCard.authentication.authType", card.getAuthentication().getAuthType().name());
             }
+            if (card.getCapabilitiesList() != null) {
+                nacosMetadata.put("a2a.agentCard.capabilitiesList", JSON.toJSONString(card.getCapabilitiesList()));
+            }
         }
         nacosMetadata.put("a2a.supportedTaskTypes", JSON.toJSONString(config.getSupportedTaskTypes()));
         nacosMetadata.put("a2a.defaultInputMode", config.getDefaultInputMode().name());
         if (config.getTimeoutConfig() != null) {
             nacosMetadata.put("a2a.taskExecutionTimeout", String.valueOf(config.getTimeoutConfig().getTaskExecutionTimeout()));
             nacosMetadata.put("a2a.connectionTimeout", String.valueOf(config.getTimeoutConfig().getConnectionTimeout()));
+            if (config.getTimeoutConfig().getPushNotificationTimeout() != null) {
+                nacosMetadata.put("a2a.pushNotificationTimeout", String.valueOf(config.getTimeoutConfig().getPushNotificationTimeout()));
+            }
+        }
+        if (config.getTaskDefinitions() != null) {
+            nacosMetadata.put("a2a.taskDefinitions", JSON.toJSONString(config.getTaskDefinitions()));
         }
     }
     
