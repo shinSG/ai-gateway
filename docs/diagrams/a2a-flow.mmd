@@ -1,0 +1,28 @@
+sequenceDiagram
+    participant AgentA as Agent A (调用方)
+    participant GW as AI 网关
+    participant Registry as 注册中心
+    participant Router as 路由引擎
+    participant AgentB as Agent B (被调用方)
+
+    AgentA->>GW: A2A 请求 (Task/Send)
+    GW->>GW: 验证 Agent Card · 解析任务类型
+    GW->>Registry: 发现目标 Agent
+    Registry-->>GW: 返回可用 Agent 实例列表
+    GW->>Router: 路由决策 (能力匹配 + 负载均衡)
+    Router-->>GW: 选定目标 Agent B
+
+    GW->>AgentB: 转发 A2A 任务请求
+    AgentB->>AgentB: 执行任务 (可能长时间运行)
+    AgentB-->>GW: 任务状态更新 (PENDING → RUNNING)
+    GW-->>AgentA: 推送任务状态通知
+
+    AgentB-->>GW: 任务完成 (COMPLETED / FAILED)
+    GW-->>AgentA: 返回 A2A 响应
+
+    opt 流式输出
+        loop 流式传输
+            AgentB-->>GW: 中间结果 (SSE)
+            GW-->>AgentA: 转发流式数据
+        end
+    end

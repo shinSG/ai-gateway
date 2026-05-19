@@ -1,0 +1,39 @@
+sequenceDiagram
+    participant C as 客户端
+    participant GW as AI 网关
+    participant Auth as 认证服务
+    participant RBAC as RBAC 授权
+    participant Audit as 审计日志
+    participant AI as AI 服务
+
+    C->>GW: 携带 Token 的请求
+
+    alt JWT Token 认证
+        GW->>Auth: 验证 JWT 签名和有效期
+        Auth-->>GW: Token 有效，返回用户信息
+    else API Key 认证
+        GW->>Auth: 验证 API Key
+        Auth-->>GW: Key 有效，返回应用信息
+    else OAuth2 认证
+        GW->>Auth: 验证 Access Token
+        Auth->>Auth: 检查 Token 权限范围
+        Auth-->>GW: Token 有效
+    end
+
+    GW->>RBAC: 检查用户/应用权限
+    RBAC->>RBAC: 匹配 RBAC 策略<br/>(角色 → 权限 → 资源)
+    alt 权限不足
+        RBAC-->>GW: 403 Forbidden
+        GW-->>C: 权限不足
+    end
+
+    RBAC-->>GW: 权限验证通过
+
+    par 并行处理
+        GW->>Audit: 记录审计日志<br/>(用户 · 操作 · 资源 · 时间 · 结果)
+    and
+        GW->>AI: 转发请求
+        AI-->>GW: 服务响应
+    end
+
+    GW-->>C: 返回响应

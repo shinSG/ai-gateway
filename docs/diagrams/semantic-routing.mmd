@@ -1,88 +1,31 @@
 flowchart TD
-    START(["Receive Request"])
+    A[接收请求] --> B{静态路由匹配?}
+    B -->|匹配成功| C[直接转发到目标服务]
+    B -->|未匹配| D[进入语义路由]
 
-    subgraph PHASE1["Phase 1: Static Route Check"]
-        CHECK_STATIC{"Static Route\nMatch?"}
-        DIRECT["Direct Forward to\nTarget Service"]
-    end
+    D --> E[构建请求文本]
+    E --> F["capabilities: multi-turn-dialogue<br/>description: 客服咨询<br/>query: 产品退换货政策"]
 
-    subgraph PHASE2["Phase 2: Semantic Analysis"]
-        BUILD_TEXT["Build Request Text\ncapabilities + description + query"]
-        EMBEDDING["Embedding Service\nGenerate Vector"]
-        VECTOR_SEARCH["Milvus Vector Search\nTop-K Similar Services"]
-    end
+    F --> G[Embedding 服务生成向量]
+    G --> H[Milvus 向量检索 Top-K]
 
-    subgraph PHASE3["Phase 3: Candidate Filtering"]
-        FILTER_UP{"Filter UP Status\nServices"}
-        CANDIDATE_CHECK{"Candidates\n> 0?"}
-    end
+    H --> I[过滤 UP 状态服务]
+    I --> J{候选服务数量 > 0?}
 
-    subgraph PHASE4["Phase 4: Load Balancing Strategy"]
-        LB_SELECT{"Select Strategy"}
-        ROUND_ROBIN["Round Robin"]
-        WEIGHTED["Weighted Round Robin"]
-        LEAST_CONN["Least Connections"]
-        CAPABILITY["Capability Matching"]
-        COST_OPT["Cost Optimized"]
-        LATENCY["Latency First"]
-    end
+    J -->|否| K[返回路由失败<br/>降级到默认服务]
+    J -->|是| L[应用负载均衡策略]
 
-    subgraph PHASE5["Phase 5: Route Decision"]
-        ROUTE_RESULT["Return Route Result\nTarget Service + Instance"]
-    end
+    L --> M{选择策略}
+    M -->|ROUND_ROBIN| N[轮询选择]
+    M -->|WEIGHTED| O[加权轮询]
+    M -->|LEAST_CONN| P[最小连接数]
+    M -->|CAPABILITY_MATCH| Q[能力匹配评分]
+    M -->|COST_OPTIMIZED| R[成本最优选择]
+    M -->|LATENCY_FIRST| M2[延迟优先选择]
 
-    subgraph FALLBACK["Fallback"]
-        DEFAULT_SERVICE["Fallback to\nDefault Service"]
-    end
-
-    START --> CHECK_STATIC
-    CHECK_STATIC -->|"Match"| DIRECT
-    CHECK_STATIC -->|"No Match"| BUILD_TEXT
-    BUILD_TEXT --> EMBEDDING
-    EMBEDDING --> VECTOR_SEARCH
-    VECTOR_SEARCH --> FILTER_UP
-    FILTER_UP --> CANDIDATE_CHECK
-    CANDIDATE_CHECK -->|"Yes"| LB_SELECT
-    CANDIDATE_CHECK -->|"No"| DEFAULT_SERVICE
-
-    LB_SELECT --> ROUND_ROBIN
-    LB_SELECT --> WEIGHTED
-    LB_SELECT --> LEAST_CONN
-    LB_SELECT --> CAPABILITY
-    LB_SELECT --> COST_OPT
-    LB_SELECT --> LATENCY
-
-    ROUND_ROBIN --> ROUTE_RESULT
-    WEIGHTED --> ROUTE_RESULT
-    LEAST_CONN --> ROUTE_RESULT
-    CAPABILITY --> ROUTE_RESULT
-    COST_OPT --> ROUTE_RESULT
-    LATENCY --> ROUTE_RESULT
-
-    DIRECT --> FORWARD["Forward Request"]
-    ROUTE_RESULT --> FORWARD
-    DEFAULT_SERVICE --> FORWARD
-    FORWARD --> PROCESS["AI Service Processing"]
-    PROCESS --> RESPONSE["Return Response"]
-
-    style START fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
-    style PHASE1 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style PHASE2 fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px
-    style PHASE3 fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    style PHASE4 fill:#e1f5fe,stroke:#0277bd,stroke-width:2px
-    style PHASE5 fill:#fce4ec,stroke:#c62828,stroke-width:2px
-    style FALLBACK fill:#ffcdd2,stroke:#c62828,stroke-width:2px
-
-    style CHECK_STATIC fill:#c8e6c9,stroke:#2e7d32
-    style DIRECT fill:#a5d6a7,stroke:#2e7d32
-    style BUILD_TEXT fill:#e1bee7,stroke:#6a1b9a
-    style EMBEDDING fill:#ce93d8,stroke:#6a1b9a
-    style VECTOR_SEARCH fill:#ba68c8,stroke:#6a1b9a
-    style FILTER_UP fill:#ffcc80,stroke:#e65100
-    style CANDIDATE_CHECK fill:#ffb74d,stroke:#e65100
-    style LB_SELECT fill:#81d4fa,stroke:#0277bd
-    style ROUTE_RESULT fill:#ef9a9a,stroke:#c62828
-    style DEFAULT_SERVICE fill:#ef9a9a,stroke:#c62828
-    style FORWARD fill:#b2dfdb,stroke:#00695c
-    style PROCESS fill:#dcedc8,stroke:#33691e
-    style RESPONSE fill:#b2dfdb,stroke:#00695c
+    N & O & P & Q & R & M2 --> S[返回路由结果<br/>目标服务 + 实例地址]
+    C --> T[转发请求]
+    S --> T
+    K --> T
+    T --> U[AI 服务处理]
+    U --> V[返回响应]

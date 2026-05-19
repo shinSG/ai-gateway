@@ -35,17 +35,17 @@
     - [4.3.3 Plugin 角色配置](#433-plugin-角色配置)
     - [4.3.4 Model 角色配置](#434-model-角色配置)
   - [4.4 服务元数据构建示例](#44-服务元数据构建示例)
-  - [4.9 Nacos 注册元数据详细定义](#49-nacos-注册元数据详细定义)
-    - [4.9.1 API 服务 Nacos 注册元数据（Agent 角色）](#491-api-服务-nacos-注册元数据agent-角色)
-    - [4.9.2 API 服务 Nacos 注册元数据（Skill 角色）](#492-api-服务-nacos-注册元数据skill-角色)
-    - [4.9.3 API 服务 Nacos 注册元数据（Plugin 角色）](#493-api-服务-nacos-注册元数据plugin-角色)
-    - [4.9.4 API 服务 Nacos 注册元数据（Model 角色）](#494-api-服务-nacos-注册元数据model-角色)
-    - [4.9.5 MCP 服务 Nacos 注册元数据（Plugin 角色）](#495-mcp-服务-nacos-注册元数据plugin-角色)
-    - [4.9.6 MCP 服务 Nacos 注册元数据（Agent 角色）](#496-mcp-服务-nacos-注册元数据agent-角色)
-    - [4.9.7 A2A 服务 Nacos 注册元数据（Agent 角色）](#497-a2a-服务-nacos-注册元数据agent-角色)
-    - [4.9.8 ACP 服务 Nacos 注册元数据（Agent 角色）](#498-acp-服务-nacos-注册元数据agent-角色)
-    - [4.9.9 Nacos 注册元数据使用示例](#499-nacos-注册元数据使用示例)
-    - [4.9.10 Nacos 元数据查询示例](#4910-nacos-元数据查询示例)
+  - [4.5 Nacos 注册元数据详细定义](#45-nacos-注册元数据详细定义)
+    - [4.5.1 API 服务 Nacos 注册元数据（Agent 角色）](#451-api-服务-nacos-注册元数据agent-角色)
+    - [4.5.2 API 服务 Nacos 注册元数据（Skill 角色）](#452-api-服务-nacos-注册元数据skill-角色)
+    - [4.5.3 API 服务 Nacos 注册元数据（Plugin 角色）](#453-api-服务-nacos-注册元数据plugin-角色)
+    - [4.5.4 API 服务 Nacos 注册元数据（Model 角色）](#454-api-服务-nacos-注册元数据model-角色)
+    - [4.5.5 MCP 服务 Nacos 注册元数据（Plugin 角色）](#455-mcp-服务-nacos-注册元数据plugin-角色)
+    - [4.5.6 MCP 服务 Nacos 注册元数据（Agent 角色）](#456-mcp-服务-nacos-注册元数据agent-角色)
+    - [4.5.7 A2A 服务 Nacos 注册元数据（Agent 角色）](#457-a2a-服务-nacos-注册元数据agent-角色)
+    - [4.5.8 ACP 服务 Nacos 注册元数据（Agent 角色）](#458-acp-服务-nacos-注册元数据agent-角色)
+    - [4.5.9 Nacos 注册元数据使用示例](#459-nacos-注册元数据使用示例)
+    - [4.5.10 Nacos 元数据查询示例](#4510-nacos-元数据查询示例)
 - [5. 基础设施](#5-基础设施)
   - [5.1 部署架构](#51-部署架构)
   - [5.2 可扩展性策略](#52-可扩展性策略)
@@ -58,15 +58,6 @@
   - [7.1 日志](#71-日志)
   - [7.2 指标](#72-指标)
   - [7.3 告警](#73-告警)
-- [8. 风险评估](#8-风险评估)
-- [9. 实施路线图](#9-实施路线图)
-  - [第一阶段：基础框架（第 1-2 周）](#第一阶段基础框架第-1-2-周)
-  - [第二阶段：注册中心（第 3-4 周）](#第二阶段注册中心第-3-4-周)
-  - [第三阶段：MCP/ACP/A2A 协议（第 5-6 周）](#第三阶段mcpacpa2a-协议第-5-6-周)
-  - [第四阶段：智能路由（第 7-8 周）](#第四阶段智能路由第-7-8-周)
-  - [第五阶段：安全与运维（第 9-10 周）](#第五阶段安全与运维第-9-10-周)
-  - [第六阶段：监控与可观测性（第 11-12 周）](#第六阶段监控与可观测性第-11-12-周)
-  - [第七阶段：生产就绪（第 13-14 周）](#第七阶段生产就绪第-13-14-周)
 - [附录](#附录)
   - [A. 术语表](#a-术语表)
   - [B. 参考资料](#b-参考资料)
@@ -130,7 +121,7 @@
 
 ### 2.1 高层架构
 
-> 📐 **高清架构图**: [system-architecture.svg](docs/diagrams/system-architecture.svg) | [Mermaid 源码](docs/diagrams/system-architecture.mmd)
+> 📐 **高清架构图**: [system-architecture.drawio](docs/diagrams/system-architecture.drawio) | [Mermaid 源码](docs/diagrams/system-architecture.mmd)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
@@ -266,52 +257,7 @@
 
 **模块依赖关系图：**
 
-```mermaid
-graph TB
-    subgraph "客户端层"
-        C1[Web 应用]
-        C2[移动端 APP]
-        C3[小程序]
-        C4[第三方系统]
-        C5[AI Agent]
-    end
-
-    subgraph "AI 网关层"
-        GW[API 接入层<br/>认证鉴权 · 限流熔断 · 协议转换]
-        Router[智能路由层<br/>静态路由 · 语义路由 · 负载均衡]
-        Registry[注册中心层<br/>服务注册 · 元数据管理 · 健康检查]
-        Admin[管理控制台<br/>资源管理 · 配置管理 · 监控]
-    end
-
-    subgraph "AI 服务层"
-        S1[Agent 服务]
-        S2[Skill 服务]
-        S3[Plugin 服务]
-        S4[Model 服务]
-        S5[Workflow 服务]
-    end
-
-    subgraph "基础设施层"
-        INF1[Nacos<br/>服务发现]
-        INF2[Redis<br/>缓存/限流]
-        INF3[MySQL<br/>数据存储]
-        INF4[Milvus<br/>向量检索]
-        INF5[RocketMQ<br/>消息队列]
-        INF6[SkyWalking<br/>链路追踪]
-    end
-
-    C1 & C2 & C3 & C4 & C5 --> GW
-    GW --> Router
-    Router --> Registry
-    Admin --> Registry
-    Registry --> INF1
-    Router --> INF4
-    GW --> INF2
-    GW --> INF6
-    Admin --> INF3
-    Router --> S1 & S2 & S3 & S4 & S5
-    S1 & S2 & S3 & S4 & S5 --> INF5
-```
+> 📐 **高清架构图**: [module-dependency.drawio](docs/diagrams/module-dependency.drawio) | [Mermaid 源码](docs/diagrams/module-dependency.mmd)
 
 ### 2.2 组件概览
 
@@ -328,231 +274,27 @@ graph TB
 
 ### 2.3 数据流
 
-> 📐 **高清流程图**: [request-flow.svg](docs/diagrams/request-flow.svg) | [Mermaid 源码](docs/diagrams/request-flow.mmd)
-
-#### 2.3.1 AI 请求处理流程
-
-```mermaid
-sequenceDiagram
-    participant C as 客户端
-    participant GW as API 接入层
-    participant Auth as 认证鉴权
-    participant RateLimit as 限流熔断
-    participant Filter as 请求过滤
-    participant Router as 智能路由层
-    participant Registry as 注册中心
-    participant Milvus as Milvus 向量库
-    participant AI as AI 服务
-
-    C->>GW: HTTP/HTTPS 请求
-    GW->>Auth: 验证 JWT Token / API Key
-    alt 认证失败
-        Auth-->>C: 401 Unauthorized
-    end
-    Auth->>RateLimit: 认证通过，传递请求
-    RateLimit->>RateLimit: 令牌桶/滑动窗口限流检查
-    alt 触发限流
-        RateLimit-->>C: 429 Too Many Requests
-    end
-    RateLimit->>Filter: 限流通过，传递请求
-    Filter->>Filter: XSS/SQL注入过滤 · 参数校验 · 协议转换
-    Filter->>Router: 过滤通过，传递请求
-
-    alt 静态路由匹配
-        Router->>Router: 路径/Header/Query 规则匹配
-        Router->>Registry: 查询目标服务实例
-    else 语义路由匹配
-        Router->>Milvus: 生成请求向量，检索相似服务
-        Milvus-->>Router: 返回 Top-K 匹配结果
-        Router->>Registry: 获取服务详情
-        Router->>Router: 能力匹配 + 成本优化 + 负载均衡
-    end
-
-    Router->>AI: 转发请求到目标 AI 服务
-    AI-->>Router: 服务响应
-    Router-->>GW: 返回响应
-    GW-->>C: HTTP 响应 (支持 SSE 流式)
-```
+> 📐 **高清流程图**: [request-flow.drawio](docs/diagrams/request-flow.drawio) | [Mermaid 源码](docs/diagrams/request-flow.mmd)
 
 #### 2.3.2 AI 资源注册流程
 
-```mermaid
-sequenceDiagram
-    participant Service as AI 服务
-    participant Registry as 注册中心
-    participant Nacos as Nacos Server
-    participant Embedding as Embedding 服务
-    participant Milvus as Milvus 向量库
-    participant Router as 路由引擎
-
-    Service->>Registry: 服务启动，发送注册请求
-    Registry->>Registry: 构建 ServiceMetadata<br/>(serviceType + role + protocolConfig + roleConfig)
-    Registry->>Nacos: 注册实例 + 元数据
-    Nacos-->>Registry: 注册成功
-
-    par 并行处理
-        Registry->>Registry: 启动健康检查定时任务
-    and
-        Registry->>Embedding: 生成服务描述向量<br/>(name + description + capabilities + useCases)
-        Embedding-->>Registry: 返回向量表示
-        Registry->>Milvus: 存储服务向量<br/>(resourceId + 向量 + metadata)
-    end
-
-    Registry->>Router: 通知路由引擎更新路由表
-    Router->>Router: 刷新路由缓存
-```
+> 📐 **高清流程图**: [registration-flow.drawio](docs/diagrams/registration-flow.drawio) | [Mermaid 源码](docs/diagrams/registration-flow.mmd)
 
 #### 2.3.3 MCP 协议处理流程
 
-```mermaid
-sequenceDiagram
-    participant Client as MCP 客户端
-    participant GW as AI 网关
-    participant Protocol as 协议转换层
-    participant Router as 路由引擎
-    participant MCP as MCP Server
-
-    Client->>GW: MCP 请求 (JSON-RPC)
-    GW->>Protocol: 解析 MCP 消息类型
-
-    alt tools/list - 列出工具
-        Protocol->>Router: 查询 MCP 服务工具列表
-        Router->>MCP: 转发 tools/list 请求
-        MCP-->>Router: 返回工具定义列表
-        Router-->>Protocol: 工具列表
-        Protocol-->>GW: 格式化 MCP 响应
-    else tools/call - 调用工具
-        Protocol->>Router: 解析工具调用参数
-        Router->>MCP: 转发 tools/call 请求
-        MCP->>MCP: 执行工具逻辑
-        MCP-->>Router: 返回工具执行结果
-        Router-->>Protocol: 工具结果
-        Protocol-->>GW: 格式化 MCP 响应
-    else resources/read - 读取资源
-        Protocol->>Router: 解析资源 URI
-        Router->>MCP: 转发 resources/read 请求
-        MCP-->>Router: 返回资源内容
-        Router-->>Protocol: 资源数据
-        Protocol-->>GW: 格式化 MCP 响应
-    end
-
-    GW-->>Client: MCP 响应 (JSON-RPC)
-```
+> 📐 **高清流程图**: [mcp-flow.drawio](docs/diagrams/mcp-flow.drawio) | [Mermaid 源码](docs/diagrams/mcp-flow.mmd)
 
 #### 2.3.4 A2A 协议处理流程
 
-```mermaid
-sequenceDiagram
-    participant AgentA as Agent A (调用方)
-    participant GW as AI 网关
-    participant Registry as 注册中心
-    participant Router as 路由引擎
-    participant AgentB as Agent B (被调用方)
-
-    AgentA->>GW: A2A 请求 (Task/Send)
-    GW->>GW: 验证 Agent Card · 解析任务类型
-    GW->>Registry: 发现目标 Agent
-    Registry-->>GW: 返回可用 Agent 实例列表
-    GW->>Router: 路由决策 (能力匹配 + 负载均衡)
-    Router-->>GW: 选定目标 Agent B
-
-    GW->>AgentB: 转发 A2A 任务请求
-    AgentB->>AgentB: 执行任务 (可能长时间运行)
-    AgentB-->>GW: 任务状态更新 (PENDING → RUNNING)
-    GW-->>AgentA: 推送任务状态通知
-
-    AgentB-->>GW: 任务完成 (COMPLETED / FAILED)
-    GW-->>AgentA: 返回 A2A 响应
-
-    opt 流式输出
-        loop 流式传输
-            AgentB-->>GW: 中间结果 (SSE)
-            GW-->>AgentA: 转发流式数据
-        end
-    end
-```
+> 📐 **高清流程图**: [a2a-flow.drawio](docs/diagrams/a2a-flow.drawio) | [Mermaid 源码](docs/diagrams/a2a-flow.mmd)
 
 #### 2.3.5 语义路由详细流程
 
-> 📐 **高清流程图**: [semantic-routing.svg](docs/diagrams/semantic-routing.svg) | [Mermaid 源码](docs/diagrams/semantic-routing.mmd)
-
-```mermaid
-flowchart TD
-    A[接收请求] --> B{静态路由匹配?}
-    B -->|匹配成功| C[直接转发到目标服务]
-    B -->|未匹配| D[进入语义路由]
-
-    D --> E[构建请求文本]
-    E --> F["capabilities: multi-turn-dialogue<br/>description: 客服咨询<br/>query: 产品退换货政策"]
-
-    F --> G[Embedding 服务生成向量]
-    G --> H[Milvus 向量检索 Top-K]
-
-    H --> I[过滤 UP 状态服务]
-    I --> J{候选服务数量 > 0?}
-
-    J -->|否| K[返回路由失败<br/>降级到默认服务]
-    J -->|是| L[应用负载均衡策略]
-
-    L --> M{选择策略}
-    M -->|ROUND_ROBIN| N[轮询选择]
-    M -->|WEIGHTED| O[加权轮询]
-    M -->|LEAST_CONN| P[最小连接数]
-    M -->|CAPABILITY_MATCH| Q[能力匹配评分]
-    M -->|COST_OPTIMIZED| R[成本最优选择]
-    M -->|LATENCY_FIRST| M2[延迟优先选择]
-
-    N & O & P & Q & R & M2 --> S[返回路由结果<br/>目标服务 + 实例地址]
-    C --> T[转发请求]
-    S --> T
-    K --> T
-    T --> U[AI 服务处理]
-    U --> V[返回响应]
-```
+> 📐 **高清流程图**: [semantic-routing.drawio](docs/diagrams/semantic-routing.drawio) | [Mermaid 源码](docs/diagrams/semantic-routing.mmd)
 
 #### 2.3.6 安全认证流程
 
-```mermaid
-sequenceDiagram
-    participant C as 客户端
-    participant GW as AI 网关
-    participant Auth as 认证服务
-    participant RBAC as RBAC 授权
-    participant Audit as 审计日志
-    participant AI as AI 服务
-
-    C->>GW: 携带 Token 的请求
-
-    alt JWT Token 认证
-        GW->>Auth: 验证 JWT 签名和有效期
-        Auth-->>GW: Token 有效，返回用户信息
-    else API Key 认证
-        GW->>Auth: 验证 API Key
-        Auth-->>GW: Key 有效，返回应用信息
-    else OAuth2 认证
-        GW->>Auth: 验证 Access Token
-        Auth->>Auth: 检查 Token 权限范围
-        Auth-->>GW: Token 有效
-    end
-
-    GW->>RBAC: 检查用户/应用权限
-    RBAC->>RBAC: 匹配 RBAC 策略<br/>(角色 → 权限 → 资源)
-    alt 权限不足
-        RBAC-->>GW: 403 Forbidden
-        GW-->>C: 权限不足
-    end
-
-    RBAC-->>GW: 权限验证通过
-
-    par 并行处理
-        GW->>Audit: 记录审计日志<br/>(用户 · 操作 · 资源 · 时间 · 结果)
-    and
-        GW->>AI: 转发请求
-        AI-->>GW: 服务响应
-    end
-
-    GW-->>C: 返回响应
-```
+> 📐 **高清流程图**: [security-flow.drawio](docs/diagrams/security-flow.drawio) | [Mermaid 源码](docs/diagrams/security-flow.mmd)
 
 ---
 
@@ -817,82 +559,6 @@ public enum RouteType {
 }
 ```
 
-**语义路由引擎：**
-
-```java
-/**
- * 语义路由引擎
- * 基于向量相似度匹配最合适的AI服务
- */
-@Service
-@Slf4j
-@RequiredArgsConstructor
-public class SemanticRouteEngine {
-    
-    private final EmbeddingService embeddingService;
-    private final VectorStore vectorStore;
-    private final AiResourceRegistryService registryService;
-    
-    /**
-     * 语义路由决策
-     */
-    public RouteResult routeBySemantic(SemanticRouteContext context) {
-        // 1. 生成请求文本的向量表示
-        String requestText = buildRequestText(context);
-        float[] queryEmbedding = embeddingService.embed(requestText);
-        
-        // 2. 向量检索相似服务
-        List<VectorMatch> matches = vectorStore.search(
-            queryEmbedding,
-            context.getTargetType(),
-            context.getTopK() != null ? context.getTopK() : 5
-        );
-        
-        // 3. 过滤可用服务
-        List<AiResourceRegistry> candidates = matches.stream()
-            .map(match -> registryService.getByResourceId(match.getResourceId()))
-            .filter(Objects::nonNull)
-            .filter(r -> r.getStatus() == ServiceStatus.UP)
-            .collect(Collectors.toList());
-        
-        // 4. 应用负载均衡
-        if (candidates.isEmpty()) {
-            return RouteResult.failure("No semantic match found");
-        }
-        
-        AiResourceRegistry selected = loadBalanceStrategy.select(
-            candidates, context);
-        
-        return RouteResult.success(selected, buildRouteTarget(selected));
-    }
-    
-    /**
-     * 构建请求文本用于向量化
-     */
-    private String buildRequestText(SemanticRouteContext context) {
-        StringBuilder sb = new StringBuilder();
-        
-        // 添加能力标签
-        if (CollectionUtils.isNotEmpty(context.getRequiredCapabilities())) {
-            sb.append("capabilities: ")
-              .append(String.join(", ", context.getRequiredCapabilities()));
-        }
-        
-        // 添加请求描述
-        if (StringUtils.isNotBlank(context.getDescription())) {
-            sb.append(" description: ").append(context.getDescription());
-        }
-        
-        // 添加查询内容
-        if (StringUtils.isNotBlank(context.getQuery())) {
-            sb.append(" query: ").append(context.getQuery());
-        }
-        
-        return sb.toString();
-    }
-}
-```
-
 **路由策略模型：**
 
 ```java
@@ -914,54 +580,7 @@ public enum RouteStrategy {
 
 ### 3.3 模块依赖关系
 
-> 📐 **高清架构图**: [module-dependency.svg](docs/diagrams/module-dependency.svg) | [Mermaid 源码](docs/diagrams/module-dependency.mmd)
-
-```mermaid
-graph TB
-    subgraph "启动层"
-        BOOT[gateway-bootstrap<br/>Spring Boot 启动入口]
-    end
-
-    subgraph "核心层"
-        CORE[gateway-core<br/>过滤器 · 路由引擎 · 协议处理 · 安全模块]
-    end
-
-    subgraph "业务层"
-        REG[gateway-registry<br/>服务注册 · 元数据 · 健康检查]
-        ROUTER[gateway-router<br/>静态路由 · 语义路由 · 负载均衡]
-        SEC[gateway-security<br/>认证鉴权 · RBAC · 审计日志]
-        ADMIN[gateway-admin<br/>管理控制台后端]
-    end
-
-    subgraph "公共层"
-        COMMON[gateway-common<br/>数据模型 · 异常定义 · 工具类]
-    end
-
-    subgraph "前端层"
-        CONSOLE[gateway-console<br/>Vue 3 + Element Plus]
-    end
-
-    BOOT --> CORE
-    CORE --> REG
-    CORE --> ROUTER
-    CORE --> SEC
-    CORE --> COMMON
-    REG --> COMMON
-    ROUTER --> COMMON
-    SEC --> COMMON
-    ADMIN --> COMMON
-    ADMIN --> REG
-    CONSOLE -.->|HTTP API| ADMIN
-
-    style BOOT fill:#e1f5fe
-    style CORE fill:#f3e5f5
-    style REG fill:#e8f5e9
-    style ROUTER fill:#e8f5e9
-    style SEC fill:#e8f5e9
-    style ADMIN fill:#e8f5e9
-    style COMMON fill:#fff3e0
-    style CONSOLE fill:#fce4ec
-```
+> 📐 **高清架构图**: [module-dependency.drawio](docs/diagrams/module-dependency.drawio) | [Mermaid 源码](docs/diagrams/module-dependency.mmd)
 
 **模块职责与依赖说明：**
 
@@ -3018,7 +2637,7 @@ public ServiceMetadata buildApiAgentMetadata() {
 }
 
 /**
- * 构建 API 类型 + Agent 角色的服务元数据示例
+ * 构建 API 类型 + Agent 角色的服务元数据示例（包含完整端点定义）
  */
 public ServiceMetadata buildApiAgentMetadata() {
     return ServiceMetadata.builder()
@@ -3036,14 +2655,92 @@ public ServiceMetadata buildApiAgentMetadata() {
         .protocolConfig(ApiProtocolConfig.builder()
             .protocolVersion("1.0")
             .apiType(ApiType.REST)
+            .apiVersion("v1")
             .basePath("/api/v1/agent")
-            .endpointPath("/chat")
             .authenticationType("BEARER_TOKEN")
             .authTypes(List.of(ApiAuthType.BEARER_TOKEN))
             .rateLimitConfig(ApiRateLimitConfig.builder()
                 .requestsPerSecond(100)
                 .requestsPerMinute(5000)
                 .build())
+            .endpoints(List.of(
+                EndpointDefinition.builder()
+                    .endpointId("chat")
+                    .name("对话接口")
+                    .description("与客服Agent进行对话交互")
+                    .method(HttpMethod.POST)
+                    .path("/chat")
+                    .parameters(List.of(
+                        ParameterDefinition.builder()
+                            .name("sessionId")
+                            .description("会话ID")
+                            .location(ParameterLocation.HEADER)
+                            .type("string")
+                            .required(false)
+                            .example("session-12345")
+                            .build(),
+                        ParameterDefinition.builder()
+                            .name("stream")
+                            .description("是否启用流式输出")
+                            .location(ParameterLocation.QUERY)
+                            .type("boolean")
+                            .required(false)
+                            .defaultValue(false)
+                            .build()
+                    ))
+                    .requestBody(SchemaDefinition.builder()
+                        .type("object")
+                        .properties(Map.of(
+                            "message", SchemaProperty.builder()
+                                .type("string")
+                                .description("用户消息内容")
+                                .required(true)
+                                .example("你好，我想咨询产品信息")
+                                .build(),
+                            "history", SchemaProperty.builder()
+                                .type("array")
+                                .description("历史对话")
+                                .items(SchemaProperty.builder()
+                                    .type("object")
+                                    .properties(Map.of(
+                                        "role", SchemaProperty.builder().type("string").build(),
+                                        "content", SchemaProperty.builder().type("string").build()
+                                    ))
+                                    .build())
+                                .required(false)
+                                .build()
+                        ))
+                        .required(List.of("message"))
+                        .build())
+                    .response(SchemaDefinition.builder()
+                        .type("object")
+                        .properties(Map.of(
+                            "reply", SchemaProperty.builder()
+                                .type("string")
+                                .description("Agent回复内容")
+                                .build(),
+                            "confidence", SchemaProperty.builder()
+                                .type("number")
+                                .description("回复置信度")
+                                .build()
+                        ))
+                        .build())
+                    .streaming(true)
+                    .timeout(30000L)
+                    .build(),
+                EndpointDefinition.builder()
+                    .endpointId("health")
+                    .name("健康检查接口")
+                    .method(HttpMethod.GET)
+                    .path("/health")
+                    .response(SchemaDefinition.builder()
+                        .type("object")
+                        .properties(Map.of(
+                            "status", SchemaProperty.builder().type("string").build()
+                        ))
+                        .build())
+                    .build()
+            ))
             .build())
         .roleConfig(AgentRoleConfig.builder()
             .summary("智能客服Agent，能够理解用户意图并提供精准的问题解答")
@@ -3068,7 +2765,7 @@ public ServiceMetadata buildApiAgentMetadata() {
 }
 
 /**
- * 构建 MCP 类型 + Plugin 角色的服务元数据示例
+ * 构建 MCP 类型 + Plugin 角色的服务元数据示例（包含完整工具定义）
  */
 public ServiceMetadata buildMcpPluginMetadata() {
     return ServiceMetadata.builder()
@@ -3089,16 +2786,56 @@ public ServiceMetadata buildMcpPluginMetadata() {
             .authenticationType("API_KEY")
             .transportTypes(List.of(McpTransportType.STDIO, McpTransportType.HTTP))
             .serverCapabilities(McpServerCapabilities.builder()
-                .tools(true).resources(true).prompts(false).logging(true).build())
+                .tools(true).resources(true).prompts(false).logging(true).sampling(false).build())
             .tools(List.of(
-                McpToolDefinition.builder().name("read_file").description("读取文件内容")
-                    .inputSchema("{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"文件路径\"}},\"required\":[\"path\"]}").build(),
-                McpToolDefinition.builder().name("write_file").description("写入文件内容")
-                    .inputSchema("{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"},\"content\":{\"type\":\"string\"}},\"required\":[\"path\",\"content\"]}").build(),
-                McpToolDefinition.builder().name("list_directory").description("列出目录内容")
-                    .inputSchema("{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}").build()))
-            .resources(List.of(McpResourceDefinition.builder()
-                .uri("file:///workspace").name("workspace").description("工作空间根目录").mimeType("inode/directory").build()))
+                McpToolDefinition.builder()
+                    .name("read_file")
+                    .description("读取文件内容")
+                    .inputSchema("{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"文件路径\"}},\"required\":[\"path\"]}")
+                    .outputSchema("{\"type\":\"object\",\"properties\":{\"content\":{\"type\":\"string\",\"description\":\"文件内容\"},\"size\":{\"type\":\"integer\",\"description\":\"文件大小\"}}}")
+                    .annotations(McpToolAnnotations.builder()
+                        .readOnlyHint(true)
+                        .destructiveHint(false)
+                        .idempotentHint(true)
+                        .openWorldHint(false)
+                        .build())
+                    .examples(List.of(
+                        McpToolExample.builder()
+                            .name("读取配置文件")
+                            .description("读取JSON配置文件")
+                            .inputExample("{\"path\":\"/etc/config.json\"}")
+                            .outputExample("{\"content\":\"{...}\",\"size\":1024}")
+                            .build()
+                    ))
+                    .build(),
+                McpToolDefinition.builder()
+                    .name("write_file")
+                    .description("写入文件内容")
+                    .inputSchema("{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"},\"content\":{\"type\":\"string\"}},\"required\":[\"path\",\"content\"]}")
+                    .annotations(McpToolAnnotations.builder()
+                        .readOnlyHint(false)
+                        .destructiveHint(true)
+                        .idempotentHint(true)
+                        .openWorldHint(false)
+                        .build())
+                    .requiresConfirmation(true)
+                    .build(),
+                McpToolDefinition.builder()
+                    .name("list_directory")
+                    .description("列出目录内容")
+                    .inputSchema("{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}")
+                    .outputSchema("{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"type\":{\"type\":\"string\",\"enum\":[\"file\",\"directory\"]},\"size\":{\"type\":\"integer\"}}}}")
+                    .build()
+            ))
+            .resources(List.of(
+                McpResourceDefinition.builder()
+                    .uri("file:///workspace")
+                    .name("workspace")
+                    .description("工作空间根目录")
+                    .mimeType("inode/directory")
+                    .subscribable(false)
+                    .build()
+            ))
             .build())
         .roleConfig(PluginRoleConfig.builder()
             .summary("文件系统MCP插件，提供文件读写和目录操作")
@@ -3110,7 +2847,7 @@ public ServiceMetadata buildMcpPluginMetadata() {
 }
 
 /**
- * 构建 A2A 类型 + Agent 角色的服务元数据示例
+ * 构建 A2A 类型 + Agent 角色的服务元数据示例（包含完整任务定义）
  */
 public ServiceMetadata buildA2aAgentMetadata() {
     return ServiceMetadata.builder()
@@ -3134,10 +2871,15 @@ public ServiceMetadata buildA2aAgentMetadata() {
                 .url("https://agent.example.com/a2a/research-assistant")
                 .version("1.0.0")
                 .capabilities(A2aCapabilities.builder()
-                    .streaming(true).pushNotifications(true).stateTransitionHistory(true).build())
+                    .streaming(true)
+                    .pushNotifications(true)
+                    .stateTransitionHistory(true)
+                    .longRunningTasks(true)
+                    .multiTurn(true)
+                    .build())
                 .defaultInputMode(A2aInputMode.TEXT)
                 .supportedInputModes(List.of(A2aInputMode.TEXT, A2aInputMode.FILE))
-                .supportedOutputModes(List.of(A2aOutputMode.TEXT, A2aOutputMode.FILE))
+                .supportedOutputModes(List.of(A2aOutputMode.TEXT, A2aOutputMode.FILE, A2aOutputMode.STRUCTURED_DATA))
                 .authentication(A2aAuthentication.builder()
                     .authType(A2aAuthType.OAUTH2)
                     .oauth2Config(A2aOAuth2Config.builder()
@@ -3147,10 +2889,74 @@ public ServiceMetadata buildA2aAgentMetadata() {
                         .build())
                     .build())
                 .tags(List.of("research", "analysis", "reporting"))
+                .capabilitiesList(List.of(
+                    A2aCapability.builder()
+                        .name("web_research")
+                        .description("网络信息搜索与收集")
+                        .version("1.0.0")
+                        .inputSchema("{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\"},\"maxResults\":{\"type\":\"integer\"}}}")
+                        .outputSchema("{\"type\":\"object\",\"properties\":{\"results\":{\"type\":\"array\"},\"summary\":{\"type\":\"string\"}}}")
+                        .build(),
+                    A2aCapability.builder()
+                        .name("report_generation")
+                        .description("生成研究报告")
+                        .version("1.0.0")
+                        .inputSchema("{\"type\":\"object\",\"properties\":{\"topic\":{\"type\":\"string\"},\"data\":{\"type\":\"array\"}}}")
+                        .outputSchema("{\"type\":\"object\",\"properties\":{\"report\":{\"type\":\"string\"},\"format\":{\"type\":\"string\"}}}")
+                        .build()
+                ))
                 .build())
             .supportedTaskTypes(List.of("research", "analysis", "report-generation"))
+            .taskDefinitions(List.of(
+                A2aTaskDefinition.builder()
+                    .taskType("research")
+                    .description("执行网络研究任务")
+                    .inputSchema("{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\",\"description\":\"研究问题\"},\"depth\":{\"type\":\"string\",\"enum\":[\"shallow\",\"deep\"],\"description\":\"研究深度\"}}}")
+                    .outputSchema("{\"type\":\"object\",\"properties\":{\"findings\":{\"type\":\"array\"},\"sources\":{\"type\":\"array\"},\"confidence\":{\"type\":\"number\"}}}")
+                    .statuses(List.of(
+                        A2aTaskStatusDefinition.builder()
+                            .status("PENDING")
+                            .description("任务等待执行")
+                            .allowedNextStatuses(List.of("RUNNING", "CANCELLED"))
+                            .build(),
+                        A2aTaskStatusDefinition.builder()
+                            .status("RUNNING")
+                            .description("任务执行中")
+                            .allowedNextStatuses(List.of("COMPLETED", "FAILED"))
+                            .build(),
+                        A2aTaskStatusDefinition.builder()
+                            .status("COMPLETED")
+                            .description("任务已完成")
+                            .build(),
+                        A2aTaskStatusDefinition.builder()
+                            .status("FAILED")
+                            .description("任务执行失败")
+                            .build()
+                    ))
+                    .streaming(true)
+                    .timeout(300000L)
+                    .retryPolicy(A2aRetryPolicy.builder()
+                        .enabled(true)
+                        .maxRetries(3)
+                        .initialInterval(1000L)
+                        .multiplier(2.0)
+                        .maxInterval(10000L)
+                        .build())
+                    .build(),
+                A2aTaskDefinition.builder()
+                    .taskType("report-generation")
+                    .description("生成研究报告")
+                    .inputSchema("{\"type\":\"object\",\"properties\":{\"data\":{\"type\":\"array\",\"description\":\"研究数据\"},\"template\":{\"type\":\"string\",\"description\":\"报告模板\"}}}")
+                    .outputSchema("{\"type\":\"object\",\"properties\":{\"report\":{\"type\":\"string\"},\"sections\":{\"type\":\"array\"}}}")
+                    .streaming(false)
+                    .timeout(600000L)
+                    .build()
+            ))
             .timeoutConfig(A2aTimeoutConfig.builder()
-                .taskExecutionTimeout(300).connectionTimeout(10).build())
+                .taskExecutionTimeout(300)
+                .connectionTimeout(10)
+                .pushNotificationTimeout(5)
+                .build())
             .build())
         .roleConfig(AgentRoleConfig.builder()
             .summary("研究助手Agent，擅长信息收集、分析和报告生成")
@@ -3371,11 +3177,11 @@ public ServiceMetadata buildA2aAgentMetadata() {
 }
 ```
 
-### 4.9 Nacos 注册元数据详细定义
+### 4.5 Nacos 注册元数据详细定义
 
 本节定义各服务类型在 Nacos 中注册时的完整元数据 KV 结构。所有服务统一使用 `serviceType`（API/MCP/ACP/A2A）标识服务类型，使用 `role` 标识内部角色（AGENT/SKILL/PLUGIN/MODEL），协议特定字段使用 `api.*`、`mcp.*`、`acp.*`、`a2a.*` 前缀，角色特定字段使用 `role.*` 前缀。
 
-#### 4.9.1 API 服务 Nacos 注册元数据（Agent 角色）
+#### 4.5.1 API 服务 Nacos 注册元数据（Agent 角色）
 
 ```json
 {
@@ -3424,7 +3230,7 @@ public ServiceMetadata buildA2aAgentMetadata() {
 }
 ```
 
-#### 4.9.2 API 服务 Nacos 注册元数据（Skill 角色）
+#### 4.5.2 API 服务 Nacos 注册元数据（Skill 角色）
 
 ```json
 {
@@ -3464,7 +3270,7 @@ public ServiceMetadata buildA2aAgentMetadata() {
 }
 ```
 
-#### 4.9.3 API 服务 Nacos 注册元数据（Plugin 角色）
+#### 4.5.3 API 服务 Nacos 注册元数据（Plugin 角色）
 
 ```json
 {
@@ -3501,7 +3307,7 @@ public ServiceMetadata buildA2aAgentMetadata() {
 }
 ```
 
-#### 4.9.4 API 服务 Nacos 注册元数据（Model 角色）
+#### 4.5.4 API 服务 Nacos 注册元数据（Model 角色）
 
 ```json
 {
@@ -3555,7 +3361,7 @@ public ServiceMetadata buildA2aAgentMetadata() {
 }
 ```
 
-#### 4.9.5 MCP 服务 Nacos 注册元数据（Plugin 角色）
+#### 4.5.5 MCP 服务 Nacos 注册元数据（Plugin 角色）
 
 ```json
 {
@@ -3597,7 +3403,7 @@ public ServiceMetadata buildA2aAgentMetadata() {
 }
 ```
 
-#### 4.9.6 MCP 服务 Nacos 注册元数据（Agent 角色）
+#### 4.5.6 MCP 服务 Nacos 注册元数据（Agent 角色）
 
 ```json
 {
@@ -3634,7 +3440,7 @@ public ServiceMetadata buildA2aAgentMetadata() {
 }
 ```
 
-#### 4.9.7 A2A 服务 Nacos 注册元数据（Agent 角色）
+#### 4.5.7 A2A 服务 Nacos 注册元数据（Agent 角色）
 
 ```json
 {
@@ -3693,7 +3499,7 @@ public ServiceMetadata buildA2aAgentMetadata() {
 }
 ```
 
-#### 4.9.8 ACP 服务 Nacos 注册元数据（Agent 角色）
+#### 4.5.8 ACP 服务 Nacos 注册元数据（Agent 角色）
 
 ```json
 {
@@ -3746,420 +3552,9 @@ public ServiceMetadata buildA2aAgentMetadata() {
 }
 ```
 
-#### 4.9.9 Nacos 注册元数据使用示例
+#### 4.5.9 Nacos 注册元数据使用示例
 
-**Java 代码示例 - 构建 Nacos 元数据：**
-
-```java
-/**
- * Nacos 元数据构建器
- * 所有 AI 服务统一构建流程：通用字段 + serviceType 对应的协议字段 + role 对应的角色字段
- */
-@Component
-public class NacosMetadataBuilder {
-    
-    /**
-     * 构建通用元数据（所有服务类型共享）
-     */
-    public Map<String, String> buildBaseMetadata(ServiceMetadata metadata) {
-        Map<String, String> nacosMetadata = new HashMap<>();
-        
-        // 通用字段
-        nacosMetadata.put("resourceId", metadata.getResourceId());
-        nacosMetadata.put("serviceType", metadata.getServiceType().name());
-        nacosMetadata.put("name", metadata.getName());
-        nacosMetadata.put("version", metadata.getVersion());
-        nacosMetadata.put("description", metadata.getDescription());
-        nacosMetadata.put("serviceAddress", metadata.getServiceAddress());
-        nacosMetadata.put("capabilities", JSON.toJSONString(metadata.getCapabilities()));
-        nacosMetadata.put("tags", JSON.toJSONString(metadata.getTags()));
-        nacosMetadata.put("status", metadata.getStatus().name());
-        nacosMetadata.put("weight", String.valueOf(metadata.getWeight()));
-        nacosMetadata.put("healthCheckInterval", String.valueOf(metadata.getHealthCheckInterval()));
-        nacosMetadata.put("createTime", metadata.getCreateTime().toString());
-        nacosMetadata.put("updateTime", metadata.getUpdateTime().toString());
-        
-        // role 字段
-        if (metadata.getRole() != null) {
-            nacosMetadata.put("role", metadata.getRole().name());
-        }
-        
-        // 协议通用字段
-        if (metadata.getProtocolConfig() != null) {
-            ProtocolConfig proto = metadata.getProtocolConfig();
-            nacosMetadata.put("protocol.endpointPath", proto.getEndpointPath());
-            nacosMetadata.put("protocol.authenticationType", proto.getAuthenticationType());
-            
-            // 构建端点定义
-            if (proto.getEndpoints() != null && !proto.getEndpoints().isEmpty()) {
-                nacosMetadata.put("api.endpoints", JSON.toJSONString(proto.getEndpoints()));
-            }
-        }
-        
-        return nacosMetadata;
-    }
-    
-    /**
-     * 构建 API 服务的协议字段
-     */
-    public void buildApiMetadata(Map<String, String> nacosMetadata, ApiProtocolConfig config) {
-        if (config == null) return;
-        nacosMetadata.put("api.apiType", config.getApiType().name());
-        nacosMetadata.put("api.basePath", config.getBasePath());
-        nacosMetadata.put("api.authTypes", JSON.toJSONString(config.getAuthTypes()));
-        if (config.getApiVersion() != null) {
-            nacosMetadata.put("api.apiVersion", config.getApiVersion());
-        }
-        if (config.getRateLimitConfig() != null) {
-            ApiRateLimitConfig rl = config.getRateLimitConfig();
-            nacosMetadata.put("api.requestsPerSecond", String.valueOf(rl.getRequestsPerSecond()));
-            nacosMetadata.put("api.requestsPerMinute", String.valueOf(rl.getRequestsPerMinute()));
-            nacosMetadata.put("api.requestsPerDay", String.valueOf(rl.getRequestsPerDay()));
-            nacosMetadata.put("api.concurrentLimit", String.valueOf(rl.getConcurrentLimit()));
-        }
-        if (config.getExamples() != null) {
-            nacosMetadata.put("api.examples", JSON.toJSONString(config.getExamples()));
-        }
-        if (config.getEndpoints() != null) {
-            nacosMetadata.put("api.endpoints", JSON.toJSONString(config.getEndpoints()));
-        }
-    }
-    
-    /**
-     * 构建 MCP 服务的协议字段
-     */
-    public void buildMcpMetadata(Map<String, String> nacosMetadata, McpProtocolConfig config) {
-        if (config == null) return;
-        nacosMetadata.put("mcp.protocolVersion", config.getProtocolVersion());
-        nacosMetadata.put("mcp.transportTypes", JSON.toJSONString(config.getTransportTypes()));
-        if (config.getServerCapabilities() != null) {
-            McpServerCapabilities caps = config.getServerCapabilities();
-            nacosMetadata.put("mcp.serverCapabilities.tools", String.valueOf(caps.getTools()));
-            nacosMetadata.put("mcp.serverCapabilities.resources", String.valueOf(caps.getResources()));
-            nacosMetadata.put("mcp.serverCapabilities.prompts", String.valueOf(caps.getPrompts()));
-            nacosMetadata.put("mcp.serverCapabilities.logging", String.valueOf(caps.getLogging()));
-            if (caps.getSampling() != null) {
-                nacosMetadata.put("mcp.serverCapabilities.sampling", String.valueOf(caps.getSampling()));
-            }
-        }
-        if (config.getTools() != null) {
-            nacosMetadata.put("mcp.tools", JSON.toJSONString(config.getTools()));
-        }
-        if (config.getResources() != null) {
-            nacosMetadata.put("mcp.resources", JSON.toJSONString(config.getResources()));
-        }
-        if (config.getPrompts() != null) {
-            nacosMetadata.put("mcp.prompts", JSON.toJSONString(config.getPrompts()));
-        }
-    }
-    
-    /**
-     * 构建 ACP 服务的协议字段
-     */
-    public void buildAcpMetadata(Map<String, String> nacosMetadata, AcpProtocolConfig config) {
-        if (config == null) return;
-        nacosMetadata.put("acp.acpVersion", config.getAcpVersion());
-        if (config.getCapabilities() != null) {
-            AcpCapabilities caps = config.getCapabilities();
-            nacosMetadata.put("acp.capabilities.toolCalling", String.valueOf(caps.getToolCalling()));
-            nacosMetadata.put("acp.capabilities.resourceAccess", String.valueOf(caps.getResourceAccess()));
-            nacosMetadata.put("acp.capabilities.streaming", String.valueOf(caps.getStreaming()));
-            nacosMetadata.put("acp.capabilities.multiTurn", String.valueOf(caps.getMultiTurn()));
-            if (caps.getPubSub() != null) {
-                nacosMetadata.put("acp.capabilities.pubSub", String.valueOf(caps.getPubSub()));
-            }
-            if (caps.getTaskManagement() != null) {
-                nacosMetadata.put("acp.capabilities.taskManagement", String.valueOf(caps.getTaskManagement()));
-            }
-        }
-        nacosMetadata.put("acp.supportedMessageFormats", JSON.toJSONString(config.getSupportedMessageFormats()));
-        nacosMetadata.put("acp.supportedInteractionModes", JSON.toJSONString(config.getSupportedInteractionModes()));
-        if (config.getTimeoutConfig() != null) {
-            AcpTimeoutConfig tc = config.getTimeoutConfig();
-            nacosMetadata.put("acp.requestTimeout", String.valueOf(tc.getRequestTimeout()));
-            nacosMetadata.put("acp.connectionTimeout", String.valueOf(tc.getConnectionTimeout()));
-            if (tc.getTaskTimeout() != null) {
-                nacosMetadata.put("acp.taskTimeout", String.valueOf(tc.getTaskTimeout()));
-            }
-        }
-        if (config.getMessageTypes() != null) {
-            nacosMetadata.put("acp.messageTypes", JSON.toJSONString(config.getMessageTypes()));
-        }
-        if (config.getActions() != null) {
-            nacosMetadata.put("acp.actions", JSON.toJSONString(config.getActions()));
-        }
-        if (config.getEvents() != null) {
-            nacosMetadata.put("acp.events", JSON.toJSONString(config.getEvents()));
-        }
-    }
-    
-    /**
-     * 构建 A2A 服务的协议字段
-     */
-    public void buildA2aMetadata(Map<String, String> nacosMetadata, A2aProtocolConfig config) {
-        if (config == null) return;
-        if (config.getAgentCard() != null) {
-            AgentCard card = config.getAgentCard();
-            nacosMetadata.put("a2a.agentCard.name", card.getName());
-            nacosMetadata.put("a2a.agentCard.description", card.getDescription());
-            nacosMetadata.put("a2a.agentCard.url", card.getUrl());
-            nacosMetadata.put("a2a.agentCard.version", card.getVersion());
-            if (card.getCapabilities() != null) {
-                nacosMetadata.put("a2a.agentCard.capabilities.streaming", String.valueOf(card.getCapabilities().getStreaming()));
-                nacosMetadata.put("a2a.agentCard.capabilities.pushNotifications", String.valueOf(card.getCapabilities().getPushNotifications()));
-                if (card.getCapabilities().getLongRunningTasks() != null) {
-                    nacosMetadata.put("a2a.agentCard.capabilities.longRunningTasks", String.valueOf(card.getCapabilities().getLongRunningTasks()));
-                }
-            }
-            nacosMetadata.put("a2a.agentCard.defaultInputMode", card.getDefaultInputMode().name());
-            nacosMetadata.put("a2a.agentCard.supportedInputModes", JSON.toJSONString(card.getSupportedInputModes()));
-            nacosMetadata.put("a2a.agentCard.supportedOutputModes", JSON.toJSONString(card.getSupportedOutputModes()));
-            if (card.getAuthentication() != null) {
-                nacosMetadata.put("a2a.agentCard.authentication.authType", card.getAuthentication().getAuthType().name());
-            }
-            if (card.getCapabilitiesList() != null) {
-                nacosMetadata.put("a2a.agentCard.capabilitiesList", JSON.toJSONString(card.getCapabilitiesList()));
-            }
-        }
-        nacosMetadata.put("a2a.supportedTaskTypes", JSON.toJSONString(config.getSupportedTaskTypes()));
-        nacosMetadata.put("a2a.defaultInputMode", config.getDefaultInputMode().name());
-        if (config.getTimeoutConfig() != null) {
-            nacosMetadata.put("a2a.taskExecutionTimeout", String.valueOf(config.getTimeoutConfig().getTaskExecutionTimeout()));
-            nacosMetadata.put("a2a.connectionTimeout", String.valueOf(config.getTimeoutConfig().getConnectionTimeout()));
-            if (config.getTimeoutConfig().getPushNotificationTimeout() != null) {
-                nacosMetadata.put("a2a.pushNotificationTimeout", String.valueOf(config.getTimeoutConfig().getPushNotificationTimeout()));
-            }
-        }
-        if (config.getTaskDefinitions() != null) {
-            nacosMetadata.put("a2a.taskDefinitions", JSON.toJSONString(config.getTaskDefinitions()));
-        }
-    }
-    
-    /**
-     * 构建 Agent 角色的字段
-     */
-    public void buildAgentRoleMetadata(Map<String, String> nacosMetadata, AgentRoleConfig config) {
-        if (config == null) return;
-        nacosMetadata.put("role.agentType", config.getAgentType().name());
-        nacosMetadata.put("role.summary", config.getSummary());
-        nacosMetadata.put("role.useCases", JSON.toJSONString(config.getUseCases()));
-        nacosMetadata.put("role.inputDescription", config.getInputDescription());
-        nacosMetadata.put("role.outputDescription", config.getOutputDescription());
-        if (config.getCapabilities() != null) {
-            AgentCapabilityDefinition caps = config.getCapabilities();
-            nacosMetadata.put("role.taskTypes", JSON.toJSONString(caps.getTaskTypes()));
-            nacosMetadata.put("role.supportedLanguages", JSON.toJSONString(caps.getSupportedLanguages()));
-            nacosMetadata.put("role.contextWindowSize", String.valueOf(caps.getContextWindowSize()));
-            nacosMetadata.put("role.streamingSupport", String.valueOf(caps.getStreamingSupport()));
-            nacosMetadata.put("role.multiModalSupport", String.valueOf(caps.getMultiModalSupport()));
-        }
-        if (config.getTools() != null) {
-            nacosMetadata.put("role.tools", JSON.toJSONString(config.getTools()));
-        }
-    }
-    
-    /**
-     * 构建 Model 角色的字段
-     */
-    public void buildModelRoleMetadata(Map<String, String> nacosMetadata, ModelRoleConfig config) {
-        if (config == null) return;
-        nacosMetadata.put("role.modelType", config.getModelType().name());
-        nacosMetadata.put("role.summary", config.getSummary());
-        nacosMetadata.put("role.bestFor", JSON.toJSONString(config.getBestFor()));
-        nacosMetadata.put("role.notRecommendedFor", JSON.toJSONString(config.getNotRecommendedFor()));
-        nacosMetadata.put("role.domains", JSON.toJSONString(config.getDomains()));
-        nacosMetadata.put("role.supportedLanguages", JSON.toJSONString(config.getSupportedLanguages()));
-        if (config.getModelCapabilities() != null) {
-            ModelCapabilityDefinition caps = config.getModelCapabilities();
-            nacosMetadata.put("role.contextWindowSize", String.valueOf(caps.getContextWindowSize()));
-            nacosMetadata.put("role.maxOutputLength", String.valueOf(caps.getMaxOutputLength()));
-            nacosMetadata.put("role.inputModalities", JSON.toJSONString(caps.getInputModalities()));
-            nacosMetadata.put("role.functionCallingSupport", String.valueOf(caps.getFunctionCallingSupport()));
-            nacosMetadata.put("role.streamingSupport", String.valueOf(caps.getStreamingSupport()));
-        }
-        if (config.getPricing() != null) {
-            PricingInfo pricing = config.getPricing();
-            nacosMetadata.put("role.pricingModel", pricing.getPricingModel().name());
-            nacosMetadata.put("role.inputPricePer1K", pricing.getInputPricePer1K().toString());
-            nacosMetadata.put("role.outputPricePer1K", pricing.getOutputPricePer1K().toString());
-            nacosMetadata.put("role.currency", pricing.getCurrency());
-        }
-    }
-    
-    /**
-     * 统一入口：构建完整的服务元数据
-     */
-    public Map<String, String> buildFullMetadata(ServiceMetadata metadata) {
-        Map<String, String> nacosMetadata = buildBaseMetadata(metadata);
-        
-        // 按 serviceType 构建协议字段
-        switch (metadata.getServiceType()) {
-            case API:
-                buildApiMetadata(nacosMetadata, (ApiProtocolConfig) metadata.getProtocolConfig());
-                break;
-            case MCP:
-                buildMcpMetadata(nacosMetadata, (McpProtocolConfig) metadata.getProtocolConfig());
-                break;
-            case ACP:
-                buildAcpMetadata(nacosMetadata, (AcpProtocolConfig) metadata.getProtocolConfig());
-                break;
-            case A2A:
-                buildA2aMetadata(nacosMetadata, (A2aProtocolConfig) metadata.getProtocolConfig());
-                break;
-        }
-        
-        // 按 role 构建角色字段
-        if (metadata.getRoleConfig() != null) {
-            switch (metadata.getRole()) {
-                case AGENT:
-                    buildAgentRoleMetadata(nacosMetadata, (AgentRoleConfig) metadata.getRoleConfig());
-                    break;
-                case SKILL:
-                    buildSkillRoleMetadata(nacosMetadata, (SkillRoleConfig) metadata.getRoleConfig());
-                    break;
-                case PLUGIN:
-                    buildPluginRoleMetadata(nacosMetadata, (PluginRoleConfig) metadata.getRoleConfig());
-                    break;
-                case MODEL:
-                    buildModelRoleMetadata(nacosMetadata, (ModelRoleConfig) metadata.getRoleConfig());
-                    break;
-            }
-        }
-        
-        return nacosMetadata;
-    }
-}
-```
-
-#### 4.9.10 Nacos 元数据查询示例
-
-```java
-/**
- * 基于元数据的服务发现
- * 所有查询以 serviceType 为首要过滤维度，再按 role、能力标签等条件组合筛选
- */
-@Service
-@Slf4j
-@RequiredArgsConstructor
-public class MetadataBasedDiscovery {
-    
-    private final NamingService namingService;
-    
-    /**
-     * 根据服务类型发现服务
-     */
-    public List<Instance> discoverByServiceType(String group, ServiceType serviceType) {
-        try {
-            return namingService.selectInstances(
-                group,
-                instance -> serviceType.name().equals(
-                    instance.getMetadata().get("serviceType"))
-            );
-        } catch (NacosException e) {
-            log.error("Failed to discover instances: {}", e.getMessage(), e);
-            return Collections.emptyList();
-        }
-    }
-    
-    /**
-     * 根据服务类型 + 角色发现服务
-     */
-    public List<Instance> discoverByServiceTypeAndRole(String group, ServiceType serviceType, ServiceRole role) {
-        try {
-            return namingService.selectInstances(
-                group,
-                instance -> serviceType.name().equals(instance.getMetadata().get("serviceType"))
-                    && role.name().equals(instance.getMetadata().get("role"))
-            );
-        } catch (NacosException e) {
-            log.error("Failed to discover instances: {}", e.getMessage(), e);
-            return Collections.emptyList();
-        }
-    }
-    
-    /**
-     * 根据能力标签发现服务
-     */
-    public List<Instance> discoverByCapability(String group, String capability) {
-        try {
-            return namingService.selectInstances(
-                group,
-                instance -> {
-                    String capabilities = instance.getMetadata().get("capabilities");
-                    if (StringUtils.isBlank(capabilities)) {
-                        return false;
-                    }
-                    List<String> caps = JSON.parseArray(capabilities, String.class);
-                    return caps.contains(capability);
-                }
-            );
-        } catch (NacosException e) {
-            log.error("Failed to discover instances: {}", e.getMessage(), e);
-            return Collections.emptyList();
-        }
-    }
-    
-    /**
-     * 组合条件发现服务
-     */
-    public List<Instance> discoverWithConditions(String group, DiscoveryConditions conditions) {
-        try {
-            return namingService.selectInstances(
-                group,
-                instance -> matchConditions(instance.getMetadata(), conditions)
-            );
-        } catch (NacosException e) {
-            log.error("Failed to discover instances: {}", e.getMessage(), e);
-            return Collections.emptyList();
-        }
-    }
-    
-    private boolean matchConditions(Map<String, String> metadata, DiscoveryConditions conditions) {
-        if (conditions.getServiceType() != null) {
-            if (!conditions.getServiceType().name().equals(metadata.get("serviceType"))) {
-                return false;
-            }
-        }
-        if (conditions.getRole() != null) {
-            if (!conditions.getRole().name().equals(metadata.get("role"))) {
-                return false;
-            }
-        }
-        if (conditions.getRequiredCapabilities() != null) {
-            String capabilities = metadata.get("capabilities");
-            if (StringUtils.isBlank(capabilities)) {
-                return false;
-            }
-            List<String> caps = JSON.parseArray(capabilities, String.class);
-            if (!caps.containsAll(conditions.getRequiredCapabilities())) {
-                return false;
-            }
-        }
-        if (conditions.getMinWeight() != null) {
-            Integer weight = Integer.valueOf(metadata.getOrDefault("weight", "50"));
-            if (weight < conditions.getMinWeight()) {
-                return false;
-            }
-        }
-        return true;
-    }
-}
-
-/**
- * 服务发现条件
- */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class DiscoveryConditions {
-    private ServiceType serviceType;
-    private ServiceRole role;
-    private List<String> requiredCapabilities;
-    private Integer minWeight;
-    private Map<String, String> tags;
-}
-```
+#### 4.5.10 Nacos 元数据查询示例
 
 ---
 
@@ -4257,84 +3652,7 @@ public class DiscoveryConditions {
 
 **部署架构 Mermaid 图：**
 
-```mermaid
-graph TB
-    subgraph "外部流量"
-        Client[客户端]
-    end
-
-    subgraph "Kubernetes 集群"
-        subgraph "Ingress 层"
-            ING[Ingress Controller<br/>Nginx/Traefik<br/>TLS终止 · 路由规则]
-        end
-
-        subgraph "网关层 (HPA 自动扩缩)"
-            GW1[Gateway Pod #1]
-            GW2[Gateway Pod #2]
-            GW3[Gateway Pod #3]
-            GWN[Gateway Pod #N]
-        end
-
-        subgraph "AI 服务层 (独立扩缩)"
-            AS1[Agent Service<br/>3 Pods]
-            AS2[Skill Service<br/>2 Pods]
-            AS3[Plugin Service<br/>1 Pod]
-            AS4[Model Service<br/>2 Pods + GPU]
-            AS5[Workflow Service<br/>1 Pod]
-        end
-
-        subgraph "基础设施层 (StatefulSet)"
-            NACOS[Nacos Cluster<br/>3 节点]
-            REDIS[Redis Cluster<br/>6 节点]
-            MYSQL[MySQL<br/>主从 + 读副本]
-            MQ[RocketMQ<br/>3 节点]
-        end
-
-        subgraph "可观测性"
-            PROM[Prometheus<br/>+ AlertManager]
-            SKY[SkyWalking<br/>链路追踪]
-            ES[Elasticsearch<br/>日志存储]
-            GRAF[Grafana<br/>监控大盘]
-        end
-
-        subgraph "语义路由"
-            MILVUS[Milvus Cluster<br/>3 节点]
-            EMB[Embedding Service<br/>BGE/text-embedding]
-        end
-    end
-
-    subgraph "CI/CD"
-        GITLAB[GitLab CI<br/>构建流水线]
-        HARBOR[Harbor<br/>镜像仓库]
-        ARGOCD[ArgoCD<br/>GitOps部署]
-        SONAR[SonarQube<br/>代码质量]
-    end
-
-    Client --> ING
-    ING --> GW1 & GW2 & GW3 & GWN
-    GW1 & GW2 & GW3 & GWN --> AS1 & AS2 & AS3 & AS4 & AS5
-    GW1 & GW2 & GW3 & GWN --> NACOS
-    GW1 & GW2 & GW3 & GWN --> REDIS
-    GW1 & GW2 & GW3 & GWN --> MILVUS
-    GW1 & GW2 & GW3 & GWN --> SKY
-    AS1 & AS2 & AS3 & AS4 & AS5 --> MQ
-    AS1 & AS2 & AS3 & AS4 & AS5 --> NACOS
-    NACOS --> PROM
-    GITLAB --> HARBOR --> ARGOCD
-    GITLAB --> SONAR
-
-    style ING fill:#e3f2fd
-    style GW1 fill:#e8f5e9
-    style GW2 fill:#e8f5e9
-    style GW3 fill:#e8f5e9
-    style GWN fill:#e8f5e9
-    style NACOS fill:#fff3e0
-    style REDIS fill:#fff3e0
-    style MYSQL fill:#fff3e0
-    style MQ fill:#fff3e0
-    style MILVUS fill:#f3e5f5
-    style PROM fill:#fce4ec
-```
+> 📐 **高清架构图**: [deployment-architecture.drawio](docs/diagrams/deployment-architecture.drawio) | [Mermaid 源码](docs/diagrams/deployment-architecture.mmd)
 
 ### 5.2 可扩展性策略
 
@@ -4573,77 +3891,6 @@ groups:
         annotations:
           summary: "语义路由延迟过高"
 ```
-
----
-
-## 8. 风险评估
-
-| 风险 | 影响 | 可能性 | 缓解措施 |
-|-----|------|-------|---------|
-| Nacos 集群故障 | 高 | 低 | 3 节点部署，定期备份，监控告警 |
-| 高并发下性能瓶颈 | 高 | 中 | 水平扩展，缓存优化，JVM 调优 |
-| AI 服务不可用 | 高 | 中 | 故障转移，熔断降级，多活部署 |
-| 语义路由准确率不足 | 中 | 中 | 持续优化 embedding 模型，提供反馈机制 |
-| MCP/A2A 协议兼容性问题 | 中 | 中 | 协议版本管理，兼容性测试 |
-| 安全漏洞 | 高 | 低 | 安全审计，渗透测试，及时更新 |
-| 配置错误导致故障 | 中 | 中 | 配置版本管理，灰度发布，回滚机制 |
-| 数据丢失 | 高 | 低 | 定期备份，主从复制，异地容灾 |
-| 向量数据库性能瓶颈 | 中 | 低 | 分片存储，索引优化，缓存热门向量 |
-
----
-
-## 9. 实施路线图
-
-### 第一阶段：基础框架（第 1-2 周）
-
-- [ ] 项目脚手架搭建
-- [ ] Nacos 集成配置
-- [ ] 基础网关过滤器链
-- [ ] 数据库设计与初始化
-- [ ] 本地开发环境搭建
-
-### 第二阶段：注册中心（第 3-4 周）
-
-- [ ] 统一服务注册模块开发（ServiceType + Role 模型）
-- [ ] API 类型服务注册与发现
-- [ ] 健康检查机制
-- [ ] 元数据管理基础功能
-
-### 第三阶段：MCP/ACP/A2A 协议（第 5-6 周）
-
-- [ ] MCP 类型服务注册与协议适配
-- [ ] ACP 类型服务注册与协议适配
-- [ ] A2A 类型服务注册与协议适配
-- [ ] 协议转换层实现
-- [ ] 协议兼容性测试
-
-### 第四阶段：智能路由（第 7-8 周）
-
-- [ ] 静态路由引擎开发
-- [ ] 语义路由引擎开发
-- [ ] Milvus 集成
-- [ ] 负载均衡策略实现
-
-### 第五阶段：安全与运维（第 9-10 周）
-
-- [ ] 认证鉴权模块开发
-- [ ] RBAC 权限控制
-- [ ] 审计日志系统
-- [ ] 限流熔断机制
-
-### 第六阶段：监控与可观测性（第 11-12 周）
-
-- [ ] SkyWalking 链路追踪集成
-- [ ] Prometheus 指标采集
-- [ ] Grafana 监控大盘
-- [ ] 告警规则配置
-
-### 第七阶段：生产就绪（第 13-14 周）
-
-- [ ] 性能测试与优化
-- [ ] 安全测试与加固
-- [ ] 部署文档编写
-- [ ] 灰度发布上线
 
 ---
 

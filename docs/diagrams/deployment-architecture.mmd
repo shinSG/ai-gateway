@@ -1,0 +1,82 @@
+graph TB
+    subgraph "外部流量"
+        Client[客户端]
+    end
+
+    subgraph "Kubernetes 集群"
+        subgraph "Ingress 层"
+            ING[Ingress Controller<br/>Nginx/Traefik<br/>TLS终止 · 路由规则]
+        end
+
+        subgraph "网关层 (HPA 自动扩缩)"
+            GW1[Gateway Pod #1]
+            GW2[Gateway Pod #2]
+            GW3[Gateway Pod #3]
+            GWN[Gateway Pod #N]
+        end
+
+        subgraph "AI 服务层 (独立扩缩)"
+            AS1[Agent Service<br/>3 Pods]
+            AS2[Skill Service<br/>2 Pods]
+            AS3[Plugin Service<br/>1 Pod]
+            AS4[Model Service<br/>2 Pods + GPU]
+            AS5[Workflow Service<br/>1 Pod]
+        end
+
+        subgraph "基础设施层 (StatefulSet)"
+            NACOS[Nacos Cluster<br/>3 节点]
+            REDIS[Redis Cluster<br/>6 节点]
+            MYSQL[MySQL<br/>主从 + 读副本]
+            MQ[RocketMQ<br/>3 节点]
+        end
+
+        subgraph "可观测性"
+            PROM[Prometheus<br/>+ AlertManager]
+            SKY[SkyWalking<br/>链路追踪]
+            ES[Elasticsearch<br/>日志存储]
+            GRAF[Grafana<br/>监控大盘]
+        end
+
+        subgraph "语义路由"
+            MILVUS[Milvus Cluster<br/>3 节点]
+            EMB[Embedding Service<br/>BGE/text-embedding]
+        end
+    end
+
+    subgraph "CI/CD"
+        GITLAB[GitLab CI<br/>构建流水线]
+        HARBOR[Harbor<br/>镜像仓库]
+        ARGOCD[ArgoCD<br/>GitOps部署]
+        SONAR[SonarQube<br/>代码质量]
+    end
+
+    Client --> ING
+    ING --> GW1 & GW2 & GW3 & GWN
+    GW1 & GW2 & GW3 & GWN --> AS1 & AS2 & AS3 & AS4 & AS5
+    GW1 & GW2 & GW3 & GWN --> NACOS
+    GW1 & GW2 & GW3 & GWN --> REDIS
+    GW1 & GW2 & GW3 & GWN --> MILVUS
+    GW1 & GW2 & GW3 & GWN --> SKY
+    AS1 & AS2 & AS3 & AS4 & AS5 --> MQ
+    AS1 & AS2 & AS3 & AS4 & AS5 --> NACOS
+    AS1 & AS2 & AS3 & AS4 & AS5 --> REDIS
+    AS1 & AS2 & AS3 & AS4 & AS5 --> MILVUS
+    AS1 & AS2 & AS3 & AS4 & AS5 --> SKY
+    NACOS --> PROM
+    PROM --> GRAF
+    SKY --> GRAF
+    ES --> GRAF
+    GITLAB --> HARBOR --> ARGOCD
+    GITLAB --> SONAR
+
+    style ING fill:#e3f2fd
+    style GW1 fill:#e8f5e9
+    style GW2 fill:#e8f5e9
+    style GW3 fill:#e8f5e9
+    style GWN fill:#e8f5e9
+    style NACOS fill:#fff3e0
+    style REDIS fill:#fff3e0
+    style MYSQL fill:#fff3e0
+    style MQ fill:#fff3e0
+    style MILVUS fill:#f3e5f5
+    style PROM fill:#fce4ec

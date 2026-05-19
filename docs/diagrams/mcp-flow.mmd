@@ -1,0 +1,32 @@
+sequenceDiagram
+    participant Client as MCP 客户端
+    participant GW as AI 网关
+    participant Protocol as 协议转换层
+    participant Router as 路由引擎
+    participant MCP as MCP Server
+
+    Client->>GW: MCP 请求 (JSON-RPC)
+    GW->>Protocol: 解析 MCP 消息类型
+
+    alt tools/list - 列出工具
+        Protocol->>Router: 查询 MCP 服务工具列表
+        Router->>MCP: 转发 tools/list 请求
+        MCP-->>Router: 返回工具定义列表
+        Router-->>Protocol: 工具列表
+        Protocol-->>GW: 格式化 MCP 响应
+    else tools/call - 调用工具
+        Protocol->>Router: 解析工具调用参数
+        Router->>MCP: 转发 tools/call 请求
+        MCP->>MCP: 执行工具逻辑
+        MCP-->>Router: 返回工具执行结果
+        Router-->>Protocol: 工具结果
+        Protocol-->>GW: 格式化 MCP 响应
+    else resources/read - 读取资源
+        Protocol->>Router: 解析资源 URI
+        Router->>MCP: 转发 resources/read 请求
+        MCP-->>Router: 返回资源内容
+        Router-->>Protocol: 资源数据
+        Protocol-->>GW: 格式化 MCP 响应
+    end
+
+    GW-->>Client: MCP 响应 (JSON-RPC)

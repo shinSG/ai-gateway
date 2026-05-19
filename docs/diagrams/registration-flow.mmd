@@ -1,0 +1,23 @@
+sequenceDiagram
+    participant Service as AI 服务
+    participant Registry as 注册中心
+    participant Nacos as Nacos Server
+    participant Embedding as Embedding 服务
+    participant Milvus as Milvus 向量库
+    participant Router as 路由引擎
+
+    Service->>Registry: 服务启动，发送注册请求
+    Registry->>Registry: 构建 ServiceMetadata<br/>(serviceType + role + protocolConfig + roleConfig)
+    Registry->>Nacos: 注册实例 + 元数据
+    Nacos-->>Registry: 注册成功
+
+    par 并行处理
+        Registry->>Registry: 启动健康检查定时任务
+    and
+        Registry->>Embedding: 生成服务描述向量<br/>(name + description + capabilities + useCases)
+        Embedding-->>Registry: 返回向量表示
+        Registry->>Milvus: 存储服务向量<br/>(resourceId + 向量 + metadata)
+    end
+
+    Registry->>Router: 通知路由引擎更新路由表
+    Router->>Router: 刷新路由缓存

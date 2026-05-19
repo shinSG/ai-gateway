@@ -1,77 +1,44 @@
-flowchart TB
-    subgraph STARTUP["Startup Layer"]
-        BOOT["gateway-bootstrap\nSpring Boot Entry Point"]
+graph TB
+    subgraph "客户端层"
+        C1[Web 应用]
+        C2[移动端 APP]
+        C3[小程序]
+        C4[第三方系统]
+        C5[AI Agent]
     end
 
-    subgraph CORE["Core Layer"]
-        CORE_MOD["gateway-core\nFilters / Route Engine\nProtocol Handling / Security"]
+    subgraph "AI 网关层"
+        GW[API 接入层<br/>认证鉴权 · 限流熔断 · 协议转换]
+        Router[智能路由层<br/>静态路由 · 语义路由 · 负载均衡]
+        Registry[注册中心层<br/>服务注册 · 元数据管理 · 健康检查]
+        Admin[管理控制台<br/>资源管理 · 配置管理 · 监控]
     end
 
-    subgraph BUSINESS["Business Layer"]
-        REG["gateway-registry\nService Registration\nMetadata / Health Check"]
-        ROUTER["gateway-router\nStatic Routing\nSemantic Routing / Load Balancing"]
-        SEC["gateway-security\nOAuth2/JWT Auth\nRBAC / Audit Log"]
-        ADMIN["gateway-admin\nAdmin Console Backend\nController / Service / Repository"]
+    subgraph "AI 服务层"
+        S1[Agent 服务]
+        S2[Skill 服务]
+        S3[Plugin 服务]
+        S4[Model 服务]
+        S5[Workflow 服务]
     end
 
-    subgraph COMMON["Common Layer"]
-        COMMON_MOD["gateway-common\nData Model / Exceptions\nUtilities"]
+    subgraph "基础设施层"
+        INF1[Nacos<br/>服务发现]
+        INF2[Redis<br/>缓存/限流]
+        INF3[MySQL<br/>数据存储]
+        INF4[Milvus<br/>向量检索]
+        INF5[RocketMQ<br/>消息队列]
+        INF6[SkyWalking<br/>链路追踪]
     end
 
-    subgraph FRONTEND["Frontend Layer"]
-        CONSOLE["gateway-console\nVue 3 + Element Plus"]
-    end
-
-    BOOT -->|depends on| CORE_MOD
-
-    CORE_MOD -->|depends on| REG
-    CORE_MOD -->|depends on| ROUTER
-    CORE_MOD -->|depends on| SEC
-    CORE_MOD -->|depends on| COMMON_MOD
-
-    REG -->|depends on| COMMON_MOD
-    ROUTER -->|depends on| REG
-    ROUTER -->|depends on| COMMON_MOD
-    SEC -->|depends on| COMMON_MOD
-
-    ADMIN -->|depends on| REG
-    ADMIN -->|depends on| COMMON_MOD
-
-    CONSOLE -.->|HTTP API| ADMIN
-
-    subgraph INFRA_DEPS["Infrastructure Dependencies"]
-        direction LR
-        NACOS["Nacos\nService Discovery"]
-        MILVUS["Milvus\nVector DB"]
-        REDIS["Redis\nCache"]
-        MYSQL["MySQL\nDatabase"]
-        ROCKETMQ["RocketMQ\nMessage Queue"]
-    end
-
-    REG -->|registers with| NACOS
-    ROUTER -->|vector search| MILVUS
-    CORE_MOD -->|caching| REDIS
-    ADMIN -->|data access| MYSQL
-    REG -->|events| ROCKETMQ
-
-    style STARTUP fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
-    style CORE fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px
-    style BUSINESS fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style COMMON fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    style FRONTEND fill:#fce4ec,stroke:#c62828,stroke-width:2px
-    style INFRA_DEPS fill:#eceff1,stroke:#37474f,stroke-width:2px
-
-    style BOOT fill:#bbdefb,stroke:#1565c0
-    style CORE_MOD fill:#e1bee7,stroke:#6a1b9a
-    style REG fill:#c8e6c9,stroke:#2e7d32
-    style ROUTER fill:#c8e6c9,stroke:#2e7d32
-    style SEC fill:#c8e6c9,stroke:#2e7d32
-    style ADMIN fill:#c8e6c9,stroke:#2e7d32
-    style COMMON_MOD fill:#ffe0b2,stroke:#e65100
-    style CONSOLE fill:#f8bbd0,stroke:#c62828
-
-    style NACOS fill:#b3e5fc,stroke:#0277bd
-    style MILVUS fill:#e1bee7,stroke:#7b1fa2
-    style REDIS fill:#ffcdd2,stroke:#c62828
-    style MYSQL fill:#c8e6c9,stroke:#2e7d32
-    style ROCKETMQ fill:#fff9c4,stroke:#f57f17
+    C1 & C2 & C3 & C4 & C5 --> GW
+    GW --> Router
+    Router --> Registry
+    Admin --> Registry
+    Registry --> INF1
+    Router --> INF4
+    GW --> INF2
+    GW --> INF6
+    Admin --> INF3
+    Router --> S1 & S2 & S3 & S4 & S5
+    S1 & S2 & S3 & S4 & S5 --> INF5

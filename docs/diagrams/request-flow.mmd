@@ -1,86 +1,39 @@
 sequenceDiagram
-    autonumber
-    participant Client as Client
-    participant Ingress as Ingress Controller
-    participant Gateway as AI Gateway
-    participant Auth as Authentication
-    participant RateLimit as Rate Limiting
-    participant Filter as Request Filter
-    participant Router as Smart Router
-    participant Registry as Registry Center
-    participant Milvus as Milvus Vector DB
-    participant Embedding as Embedding Service
-    participant AI as AI Service
+    participant C as 客户端
+    participant GW as API 接入层
+    participant Auth as 认证鉴权
+    participant RateLimit as 限流熔断
+    participant Filter as 请求过滤
+    participant Router as 智能路由层
+    participant Registry as 注册中心
+    participant Milvus as Milvus 向量库
+    participant AI as AI 服务
 
-    Client->>Ingress: HTTP/HTTPS Request
-    Ingress->>Gateway: Forward Request
+    C->>GW: HTTP/HTTPS 请求
+    GW->>Auth: 验证 JWT Token / API Key
+    alt 认证失败
+        Auth-->>C: 401 Unauthorized
+    end
+    Auth->>RateLimit: 认证通过，传递请求
+    RateLimit->>RateLimit: 令牌桶/滑动窗口限流检查
+    alt 触发限流
+        RateLimit-->>C: 429 Too Many Requests
+    end
+    RateLimit->>Filter: 限流通过，传递请求
+    Filter->>Filter: XSS/SQL注入过滤 · 参数校验 · 协议转换
+    Filter->>Router: 过滤通过，传递请求
 
-    rect rgb(232, 245, 233)
-        Note over Gateway,Auth: Authentication Phase
-        Gateway->>Auth: Verify JWT Token / API Key
-        alt JWT Token
-            Auth->>Auth: Validate Signature & Expiry
-        else API Key
-            Auth->>Auth: Lookup API Key
-        else OAuth2
-            Auth->>Auth: Validate Access Token
-        end
-        alt Authentication Failed
-            Auth-->>Gateway: 401 Unauthorized
-            Gateway-->>Client: 401 Error
-        end
-        Auth->>Gateway: User Info + Permissions
+    alt 静态路由匹配
+        Router->>Router: 路径/Header/Query 规则匹配
+        Router->>Registry: 查询目标服务实例
+    else 语义路由匹配
+        Router->>Milvus: 生成请求向量，检索相似服务
+        Milvus-->>Router: 返回 Top-K 匹配结果
+        Router->>Registry: 获取服务详情
+        Router->>Router: 能力匹配 + 成本优化 + 负载均衡
     end
 
-    rect rgb(255, 243, 224)
-        Note over Gateway,RateLimit: Rate Limiting Phase
-        Gateway->>RateLimit: Check Rate Limit
-        RateLimit->>RateLimit: Token Bucket / Sliding Window
-        alt Rate Limit Exceeded
-            RateLimit-->>Gateway: 429 Too Many Requests
-            Gateway-->>Client: 429 Error
-        end
-        RateLimit->>Gateway: Limit Passed
-    end
-
-    rect rgb(227, 242, 253)
-        Note over Gateway,Filter: Filtering Phase
-        Gateway->>Filter: Validate Request
-        Filter->>Filter: XSS / SQL Injection Check
-        Filter->>Filter: Parameter Validation
-        Filter->>Filter: Protocol Conversion (REST to MCP/A2A/ACP)
-        Filter->>Gateway: Filter Passed
-    end
-
-    rect rgb(243, 229, 245)
-        Note over Router,Registry: Routing Phase
-        Gateway->>Router: Route Decision
-
-        alt Static Route Match
-            Router->>Router: Path / Header / Query Matching
-            Router->>Registry: Query Target Service
-        else Semantic Route Match
-            Router->>Embedding: Generate Request Vector
-            Embedding-->>Router: Vector Representation
-            Router->>Milvus: Vector Similarity Search (Top-K)
-            Milvus-->>Router: Matching Results
-            Router->>Registry: Get Service Details
-            Router->>Router: Capability Matching + Cost Optimization + Load Balancing
-        end
-
-        alt No Route Found
-            Router-->>Gateway: Route Failure
-            Gateway->>Router: Fallback to Default Service
-        end
-
-        Router-->>Gateway: Target Service + Instance Address
-    end
-
-    rect rgb(252, 228, 236)
-        Note over Gateway,AI: Forwarding Phase
-        Gateway->>AI: Forward Request to Target AI Service
-        AI->>AI: Process Request
-        AI-->>Gateway: Service Response
-    end
-
-    Gateway-->>Client: HTTP Response (Support SSE Streaming)
+    Router->>AI: 转发请求到目标 AI 服务
+    AI-->>Router: 服务响应
+    Router-->>GW: 返回响应
+    GW-->>C: HTTP 响应 (支持 SSE 流式)
