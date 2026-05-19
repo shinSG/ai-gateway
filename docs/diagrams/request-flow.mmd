@@ -1,0 +1,86 @@
+sequenceDiagram
+    autonumber
+    participant Client as Client
+    participant Ingress as Ingress Controller
+    participant Gateway as AI Gateway
+    participant Auth as Authentication
+    participant RateLimit as Rate Limiting
+    participant Filter as Request Filter
+    participant Router as Smart Router
+    participant Registry as Registry Center
+    participant Milvus as Milvus Vector DB
+    participant Embedding as Embedding Service
+    participant AI as AI Service
+
+    Client->>Ingress: HTTP/HTTPS Request
+    Ingress->>Gateway: Forward Request
+
+    rect rgb(232, 245, 233)
+        Note over Gateway,Auth: Authentication Phase
+        Gateway->>Auth: Verify JWT Token / API Key
+        alt JWT Token
+            Auth->>Auth: Validate Signature & Expiry
+        else API Key
+            Auth->>Auth: Lookup API Key
+        else OAuth2
+            Auth->>Auth: Validate Access Token
+        end
+        alt Authentication Failed
+            Auth-->>Gateway: 401 Unauthorized
+            Gateway-->>Client: 401 Error
+        end
+        Auth->>Gateway: User Info + Permissions
+    end
+
+    rect rgb(255, 243, 224)
+        Note over Gateway,RateLimit: Rate Limiting Phase
+        Gateway->>RateLimit: Check Rate Limit
+        RateLimit->>RateLimit: Token Bucket / Sliding Window
+        alt Rate Limit Exceeded
+            RateLimit-->>Gateway: 429 Too Many Requests
+            Gateway-->>Client: 429 Error
+        end
+        RateLimit->>Gateway: Limit Passed
+    end
+
+    rect rgb(227, 242, 253)
+        Note over Gateway,Filter: Filtering Phase
+        Gateway->>Filter: Validate Request
+        Filter->>Filter: XSS / SQL Injection Check
+        Filter->>Filter: Parameter Validation
+        Filter->>Filter: Protocol Conversion (REST to MCP/A2A/ACP)
+        Filter->>Gateway: Filter Passed
+    end
+
+    rect rgb(243, 229, 245)
+        Note over Router,Registry: Routing Phase
+        Gateway->>Router: Route Decision
+
+        alt Static Route Match
+            Router->>Router: Path / Header / Query Matching
+            Router->>Registry: Query Target Service
+        else Semantic Route Match
+            Router->>Embedding: Generate Request Vector
+            Embedding-->>Router: Vector Representation
+            Router->>Milvus: Vector Similarity Search (Top-K)
+            Milvus-->>Router: Matching Results
+            Router->>Registry: Get Service Details
+            Router->>Router: Capability Matching + Cost Optimization + Load Balancing
+        end
+
+        alt No Route Found
+            Router-->>Gateway: Route Failure
+            Gateway->>Router: Fallback to Default Service
+        end
+
+        Router-->>Gateway: Target Service + Instance Address
+    end
+
+    rect rgb(252, 228, 236)
+        Note over Gateway,AI: Forwarding Phase
+        Gateway->>AI: Forward Request to Target AI Service
+        AI->>AI: Process Request
+        AI-->>Gateway: Service Response
+    end
+
+    Gateway-->>Client: HTTP Response (Support SSE Streaming)

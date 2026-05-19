@@ -1,0 +1,88 @@
+flowchart TD
+    START(["Receive Request"])
+
+    subgraph PHASE1["Phase 1: Static Route Check"]
+        CHECK_STATIC{"Static Route\nMatch?"}
+        DIRECT["Direct Forward to\nTarget Service"]
+    end
+
+    subgraph PHASE2["Phase 2: Semantic Analysis"]
+        BUILD_TEXT["Build Request Text\ncapabilities + description + query"]
+        EMBEDDING["Embedding Service\nGenerate Vector"]
+        VECTOR_SEARCH["Milvus Vector Search\nTop-K Similar Services"]
+    end
+
+    subgraph PHASE3["Phase 3: Candidate Filtering"]
+        FILTER_UP{"Filter UP Status\nServices"}
+        CANDIDATE_CHECK{"Candidates\n> 0?"}
+    end
+
+    subgraph PHASE4["Phase 4: Load Balancing Strategy"]
+        LB_SELECT{"Select Strategy"}
+        ROUND_ROBIN["Round Robin"]
+        WEIGHTED["Weighted Round Robin"]
+        LEAST_CONN["Least Connections"]
+        CAPABILITY["Capability Matching"]
+        COST_OPT["Cost Optimized"]
+        LATENCY["Latency First"]
+    end
+
+    subgraph PHASE5["Phase 5: Route Decision"]
+        ROUTE_RESULT["Return Route Result\nTarget Service + Instance"]
+    end
+
+    subgraph FALLBACK["Fallback"]
+        DEFAULT_SERVICE["Fallback to\nDefault Service"]
+    end
+
+    START --> CHECK_STATIC
+    CHECK_STATIC -->|"Match"| DIRECT
+    CHECK_STATIC -->|"No Match"| BUILD_TEXT
+    BUILD_TEXT --> EMBEDDING
+    EMBEDDING --> VECTOR_SEARCH
+    VECTOR_SEARCH --> FILTER_UP
+    FILTER_UP --> CANDIDATE_CHECK
+    CANDIDATE_CHECK -->|"Yes"| LB_SELECT
+    CANDIDATE_CHECK -->|"No"| DEFAULT_SERVICE
+
+    LB_SELECT --> ROUND_ROBIN
+    LB_SELECT --> WEIGHTED
+    LB_SELECT --> LEAST_CONN
+    LB_SELECT --> CAPABILITY
+    LB_SELECT --> COST_OPT
+    LB_SELECT --> LATENCY
+
+    ROUND_ROBIN --> ROUTE_RESULT
+    WEIGHTED --> ROUTE_RESULT
+    LEAST_CONN --> ROUTE_RESULT
+    CAPABILITY --> ROUTE_RESULT
+    COST_OPT --> ROUTE_RESULT
+    LATENCY --> ROUTE_RESULT
+
+    DIRECT --> FORWARD["Forward Request"]
+    ROUTE_RESULT --> FORWARD
+    DEFAULT_SERVICE --> FORWARD
+    FORWARD --> PROCESS["AI Service Processing"]
+    PROCESS --> RESPONSE["Return Response"]
+
+    style START fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    style PHASE1 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style PHASE2 fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px
+    style PHASE3 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style PHASE4 fill:#e1f5fe,stroke:#0277bd,stroke-width:2px
+    style PHASE5 fill:#fce4ec,stroke:#c62828,stroke-width:2px
+    style FALLBACK fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+
+    style CHECK_STATIC fill:#c8e6c9,stroke:#2e7d32
+    style DIRECT fill:#a5d6a7,stroke:#2e7d32
+    style BUILD_TEXT fill:#e1bee7,stroke:#6a1b9a
+    style EMBEDDING fill:#ce93d8,stroke:#6a1b9a
+    style VECTOR_SEARCH fill:#ba68c8,stroke:#6a1b9a
+    style FILTER_UP fill:#ffcc80,stroke:#e65100
+    style CANDIDATE_CHECK fill:#ffb74d,stroke:#e65100
+    style LB_SELECT fill:#81d4fa,stroke:#0277bd
+    style ROUTE_RESULT fill:#ef9a9a,stroke:#c62828
+    style DEFAULT_SERVICE fill:#ef9a9a,stroke:#c62828
+    style FORWARD fill:#b2dfdb,stroke:#00695c
+    style PROCESS fill:#dcedc8,stroke:#33691e
+    style RESPONSE fill:#b2dfdb,stroke:#00695c

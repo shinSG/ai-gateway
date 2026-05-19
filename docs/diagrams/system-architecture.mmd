@@ -1,0 +1,109 @@
+flowchart TB
+    subgraph CLIENT["Client Layer"]
+        direction LR
+        C1["Web Application\n(Vue/React)"]
+        C2["Mobile App\n(iOS/Android)"]
+        C3["Mini Program\n(WeChat/Alipay)"]
+        C4["Third-Party System\n(ERP/CRM)"]
+        C5["AI Agent\n(LangChain)"]
+        C6["CLI Tool\n(Python)"]
+    end
+
+    subgraph GATEWAY["AI Gateway Layer"]
+        direction TB
+
+        subgraph GW_API["API Access Layer"]
+            direction LR
+            GW1["Authentication\nOAuth2 / JWT / API Key"]
+            GW2["Rate Limiting\nSentinel / Token Bucket"]
+            GW3["Protocol Conversion\nREST to MCP / A2A / ACP"]
+            GW4["Request Filtering\nXSS / SQL Injection"]
+            GW5["Response Caching\nRedis"]
+        end
+
+        subgraph GW_ROUTER["Intelligent Router Layer"]
+            direction LR
+            R1["Static Routing\nPath / Header / Query"]
+            R2["Semantic Routing\nVector Similarity"]
+            R3["Load Balancing\nRound Robin / Weighted"]
+            R4["Failover\nCircuit Breaker / Retry"]
+        end
+
+        subgraph GW_REGISTRY["Registry Layer"]
+            direction LR
+            RG1["ServiceType\nAPI / MCP / ACP / A2A"]
+            RG2["ServiceRole\nAGENT / SKILL / PLUGIN / MODEL"]
+            RG3["Health Check"]
+            RG4["Metadata Management"]
+            RG5["Nacos Integration"]
+        end
+
+        subgraph GW_ADMIN["Admin Console"]
+            direction LR
+            AD1["Resource Management\nCRUD / Batch Import"]
+            AD2["Config Management\nDynamic / Gray Release"]
+            AD3["Permission Management\nRBAC / API Key"]
+            AD4["Audit Log\nOperation / Call Log"]
+            AD5["Monitoring Dashboard\nGrafana / Alerting"]
+        end
+    end
+
+    subgraph AI_SERVICES["AI Services Layer"]
+        direction LR
+        S1["Agent Service\nCustomer / Research / Coding"]
+        S2["Skill Service\nText Summarization / Code Gen"]
+        S3["Plugin Service\nFilesystem / Web Search"]
+        S4["Model Service\nGPT-4 / Claude / Local"]
+        S5["Workflow Service\nOrchestration Engine"]
+    end
+
+    subgraph INFRA["Infrastructure Layer"]
+        direction LR
+
+        subgraph INFRA_CORE["Core Infrastructure"]
+            direction LR
+            I1["Nacos\nService Discovery / Config Center\n3-Node Cluster"]
+            I2["Redis\nCache / Rate Limit / Lock\n6-Node Cluster"]
+            I3["MySQL\nData Storage\nMaster-Slave + Read Replica"]
+            I4["RocketMQ\nMessage Queue / Event-Driven\n3-Node Cluster"]
+        end
+
+        subgraph INFRA_OBS["Observability"]
+            direction LR
+            O1["SkyWalking\nDistributed Tracing"]
+            O2["Prometheus\nMetrics Collection"]
+            O3["Grafana\nMonitoring Dashboard"]
+            O4["Elasticsearch\nLog Aggregation"]
+        end
+
+        subgraph INFRA_SEMANTIC["Semantic Routing"]
+            direction LR
+            V1["Milvus\nVector Database\n3-Node Cluster"]
+            V2["Embedding Service\nBGE / text-embedding"]
+        end
+    end
+
+    CLIENT -->|HTTP/HTTPS| GW_API
+    GW_API --> GW_ROUTER
+    GW_ROUTER --> GW_REGISTRY
+    GW_ADMIN --> GW_REGISTRY
+
+    GW_ROUTER -->|Route Decision| AI_SERVICES
+
+    GW_REGISTRY --> INFRA_CORE
+    GW_ROUTER --> INFRA_SEMANTIC
+    GW_API --> INFRA_OBS
+
+    AI_SERVICES --> INFRA_CORE
+
+    style CLIENT fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    style GATEWAY fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style GW_API fill:#c8e6c9,stroke:#2e7d32
+    style GW_ROUTER fill:#c8e6c9,stroke:#2e7d32
+    style GW_REGISTRY fill:#c8e6c9,stroke:#2e7d32
+    style GW_ADMIN fill:#c8e6c9,stroke:#2e7d32
+    style AI_SERVICES fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style INFRA fill:#fce4ec,stroke:#c62828,stroke-width:2px
+    style INFRA_CORE fill:#ffcdd2,stroke:#c62828
+    style INFRA_OBS fill:#ffcdd2,stroke:#c62828
+    style INFRA_SEMANTIC fill:#ffcdd2,stroke:#c62828

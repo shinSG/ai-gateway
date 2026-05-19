@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1400" width="1000" height="1400">
+  <defs>
+    <style>
+      .title { font: bold 20px Arial; fill: #333; }
+      .label { font: 13px Arial; fill: #333; }
+      .sublabel { font: 11px Arial; fill: #666; }
+      .box { rx: 6; ry: 6; }
+      .arrow { stroke: #666; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#666"/>
+    </marker>
+  </defs>
+
+  <rect width="1000" height="1400" fill="#fafafa"/>
+  <text x="500" y="35" class="title" text-anchor="middle">AI Request Processing Flow</text>
+
+  <!-- Client -->
+  <rect x="400" y="60" width="200" height="50" class="box" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+  <text x="500" y="90" class="label" text-anchor="middle">Client</text>
+
+  <line x1="500" y1="110" x2="500" y2="140" class="arrow"/>
+
+  <!-- Ingress -->
+  <rect x="350" y="140" width="300" height="50" class="box" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/>
+  <text x="500" y="170" class="label" text-anchor="middle">Ingress Controller</text>
+
+  <line x1="500" y1="190" x2="500" y2="220" class="arrow"/>
+
+  <!-- Authentication Phase -->
+  <rect x="100" y="220" width="800" height="180" class="box" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2" opacity="0.3"/>
+  <text x="500" y="245" class="label" text-anchor="middle" fill="#2e7d32" font-weight="bold">Authentication Phase</text>
+
+  <rect x="350" y="260" width="300" height="50" class="box" fill="#c8e6c9" stroke="#2e7d32"/>
+  <text x="500" y="290" class="label" text-anchor="middle">Verify JWT Token / API Key</text>
+
+  <rect x="200" y="320" width="150" height="40" class="box" fill="#a5d6a7" stroke="#2e7d32"/>
+  <text x="275" y="345" class="sublabel" text-anchor="middle">JWT Validation</text>
+
+  <rect x="425" y="320" width="150" height="40" class="box" fill="#a5d6a7" stroke="#2e7d32"/>
+  <text x="500" y="345" class="sublabel" text-anchor="middle">API Key Lookup</text>
+
+  <rect x="650" y="320" width="150" height="40" class="box" fill="#a5d6a7" stroke="#2e7d32"/>
+  <text x="725" y="345" class="sublabel" text-anchor="middle">OAuth2 Token</text>
+
+  <line x1="500" y1="400" x2="500" y2="430" class="arrow"/>
+
+  <!-- Rate Limiting Phase -->
+  <rect x="100" y="430" width="800" height="120" class="box" fill="#fff3e0" stroke="#e65100" stroke-width="2" opacity="0.3"/>
+  <text x="500" y="455" class="label" text-anchor="middle" fill="#e65100" font-weight="bold">Rate Limiting Phase</text>
+
+  <rect x="350" y="470" width="300" height="50" class="box" fill="#ffe0b2" stroke="#e65100"/>
+  <text x="500" y="500" class="label" text-anchor="middle">Token Bucket / Sliding Window</text>
+
+  <line x1="500" y1="550" x2="500" y2="580" class="arrow"/>
+
+  <!-- Filtering Phase -->
+  <rect x="100" y="580" width="800" height="120" class="box" fill="#e3f2fd" stroke="#1565c0" stroke-width="2" opacity="0.3"/>
+  <text x="500" y="605" class="label" text-anchor="middle" fill="#1565c0" font-weight="bold">Filtering Phase</text>
+
+  <rect x="200" y="620" width="150" height="40" class="box" fill="#bbdefb" stroke="#1565c0"/>
+  <text x="275" y="645" class="sublabel" text-anchor="middle">XSS/SQL Filter</text>
+
+  <rect x="425" y="620" width="150" height="40" class="box" fill="#bbdefb" stroke="#1565c0"/>
+  <text x="500" y="645" class="sublabel" text-anchor="middle">Param Validation</text>
+
+  <rect x="650" y="620" width="150" height="40" class="box" fill="#bbdefb" stroke="#1565c0"/>
+  <text x="725" y="645" class="sublabel" text-anchor="middle">Protocol Convert</text>
+
+  <line x1="500" y1="700" x2="500" y2="730" class="arrow"/>
+
+  <!-- Routing Phase -->
+  <rect x="100" y="730" width="800" height="200" class="box" fill="#f3e5f5" stroke="#6a1b9a" stroke-width="2" opacity="0.3"/>
+  <text x="500" y="755" class="label" text-anchor="middle" fill="#6a1b9a" font-weight="bold">Routing Phase</text>
+
+  <rect x="350" y="770" width="300" height="50" class="box" fill="#e1bee7" stroke="#6a1b9a"/>
+  <text x="500" y="800" class="label" text-anchor="middle">Route Decision</text>
+
+  <rect x="150" y="840" width="180" height="40" class="box" fill="#ce93d8" stroke="#6a1b9a"/>
+  <text x="240" y="865" class="sublabel" text-anchor="middle">Static: Path/Header/Query</text>
+
+  <rect x="410" y="840" width="180" height="40" class="box" fill="#ce93d8" stroke="#6a1b9a"/>
+  <text x="500" y="865" class="sublabel" text-anchor="middle">Semantic: Vector Search</text>
+
+  <rect x="670" y="840" width="180" height="40" class="box" fill="#ce93d8" stroke="#6a1b9a"/>
+  <text x="760" y="865" class="sublabel" text-anchor="middle">Capability Match</text>
+
+  <rect x="350" y="890" width="300" height="30" class="box" fill="#ba68c8" stroke="#6a1b9a"/>
+  <text x="500" y="910" class="sublabel" text-anchor="middle" fill="white">Load Balancing + Failover</text>
+
+  <line x1="500" y1="930" x2="500" y2="960" class="arrow"/>
+
+  <!-- Forwarding Phase -->
+  <rect x="100" y="960" width="800" height="100" class="box" fill="#fce4ec" stroke="#c62828" stroke-width="2" opacity="0.3"/>
+  <text x="500" y="985" class="label" text-anchor="middle" fill="#c62828" font-weight="bold">Forwarding Phase</text>
+
+  <rect x="350" y="1000" width="300" height="40" class="box" fill="#f8bbd0" stroke="#c62828"/>
+  <text x="500" y="1025" class="label" text-anchor="middle">Forward to AI Service</text>
+
+  <line x1="500" y1="1060" x2="500" y2="1090" class="arrow"/>
+
+  <!-- AI Service -->
+  <rect x="350" y="1090" width="300" height="50" class="box" fill="#fff3e0" stroke="#e65100" stroke-width="2"/>
+  <text x="500" y="1120" class="label" text-anchor="middle">AI Service Processing</text>
+
+  <line x1="500" y1="1140" x2="500" y2="1170" class="arrow"/>
+
+  <!-- Response -->
+  <rect x="350" y="1170" width="300" height="50" class="box" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/>
+  <text x="500" y="1200" class="label" text-anchor="middle">Response</text>
+
+  <line x1="500" y1="1220" x2="500" y2="1250" class="arrow"/>
+
+  <!-- Return to Client -->
+  <rect x="350" y="1250" width="300" height="50" class="box" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+  <text x="500" y="1280" class="label" text-anchor="middle">Return to Client (SSE Streaming)</text>
+</svg>

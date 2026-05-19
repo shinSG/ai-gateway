@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900">
+  <defs>
+    <style>
+      .title { font: bold 24px Arial; fill: #333; }
+      .subtitle { font: bold 16px Arial; fill: #555; }
+      .label { font: 14px Arial; fill: #333; }
+      .sublabel { font: 11px Arial; fill: #666; }
+      .box { rx: 8; ry: 8; }
+    </style>
+    <linearGradient id="clientGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#e3f2fd"/>
+      <stop offset="100%" style="stop-color:#bbdefb"/>
+    </linearGradient>
+    <linearGradient id="gatewayGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8f5e9"/>
+      <stop offset="100%" style="stop-color:#c8e6c9"/>
+    </linearGradient>
+    <linearGradient id="serviceGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fff3e0"/>
+      <stop offset="100%" style="stop-color:#ffe0b2"/>
+    </linearGradient>
+    <linearGradient id="infraGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fce4ec"/>
+      <stop offset="100%" style="stop-color:#f8bbd0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="900" fill="#fafafa"/>
+
+  <!-- Title -->
+  <text x="600" y="40" class="title" text-anchor="middle">AI Gateway System Architecture</text>
+
+  <!-- Client Layer -->
+  <rect x="50" y="60" width="1100" height="100" class="box" fill="url(#clientGrad)" stroke="#1565c0" stroke-width="2"/>
+  <text x="600" y="85" class="subtitle" text-anchor="middle" fill="#1565c0">Client Layer</text>
+
+  <rect x="80" y="95" width="140" height="50" class="box" fill="#bbdefb" stroke="#1565c0"/>
+  <text x="150" y="115" class="label" text-anchor="middle">Web App</text>
+  <text x="150" y="130" class="sublabel" text-anchor="middle">(Vue/React)</text>
+
+  <rect x="240" y="95" width="140" height="50" class="box" fill="#bbdefb" stroke="#1565c0"/>
+  <text x="310" y="115" class="label" text-anchor="middle">Mobile App</text>
+  <text x="310" y="130" class="sublabel" text-anchor="middle">(iOS/Android)</text>
+
+  <rect x="400" y="95" width="140" height="50" class="box" fill="#bbdefb" stroke="#1565c0"/>
+  <text x="470" y="115" class="label" text-anchor="middle">Mini Program</text>
+  <text x="470" y="130" class="sublabel" text-anchor="middle">(WeChat)</text>
+
+  <rect x="560" y="95" width="140" height="50" class="box" fill="#bbdefb" stroke="#1565c0"/>
+  <text x="630" y="115" class="label" text-anchor="middle">Third-Party</text>
+  <text x="630" y="130" class="sublabel" text-anchor="middle">(ERP/CRM)</text>
+
+  <rect x="720" y="95" width="140" height="50" class="box" fill="#bbdefb" stroke="#1565c0"/>
+  <text x="790" y="115" class="label" text-anchor="middle">AI Agent</text>
+  <text x="790" y="130" class="sublabel" text-anchor="middle">(LangChain)</text>
+
+  <rect x="880" y="95" width="140" height="50" class="box" fill="#bbdefb" stroke="#1565c0"/>
+  <text x="950" y="115" class="label" text-anchor="middle">CLI Tool</text>
+  <text x="950" y="130" class="sublabel" text-anchor="middle">(Python)</text>
+
+  <!-- Arrow down -->
+  <line x1="600" y1="160" x2="600" y2="190" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="620" y="180" class="sublabel">HTTP/HTTPS</text>
+
+  <!-- Gateway Layer -->
+  <rect x="50" y="190" width="1100" height="280" class="box" fill="url(#gatewayGrad)" stroke="#2e7d32" stroke-width="2"/>
+  <text x="600" y="215" class="subtitle" text-anchor="middle" fill="#2e7d32">AI Gateway Layer</text>
+
+  <!-- API Access Layer -->
+  <rect x="80" y="230" width="1040" height="70" class="box" fill="#c8e6c9" stroke="#2e7d32"/>
+  <text x="600" y="250" class="label" text-anchor="middle" fill="#2e7d32">API Access Layer</text>
+
+  <rect x="100" y="260" width="120" height="30" class="box" fill="#a5d6a7" stroke="#2e7d32"/>
+  <text x="160" y="280" class="sublabel" text-anchor="middle">Auth (OAuth2/JWT)</text>
+
+  <rect x="240" y="260" width="120" height="30" class="box" fill="#a5d6a7" stroke="#2e7d32"/>
+  <text x="300" y="280" class="sublabel" text-anchor="middle">Rate Limiting</text>
+
+  <rect x="380" y="260" width="120" height="30" class="box" fill="#a5d6a7" stroke="#2e7d32"/>
+  <text x="440" y="280" class="sublabel" text-anchor="middle">Protocol Convert</text>
+
+  <rect x="520" y="260" width="120" height="30" class="box" fill="#a5d6a7" stroke="#2e7d32"/>
+  <text x="580" y="280" class="sublabel" text-anchor="middle">Request Filter</text>
+
+  <rect x="660" y="260" width="120" height="30" class="box" fill="#a5d6a7" stroke="#2e7d32"/>
+  <text x="720" y="280" class="sublabel" text-anchor="middle">Response Cache</text>
+
+  <!-- Smart Router Layer -->
+  <rect x="80" y="310" width="1040" height="70" class="box" fill="#c8e6c9" stroke="#2e7d32"/>
+  <text x="600" y="330" class="label" text-anchor="middle" fill="#2e7d32">Intelligent Router Layer</text>
+
+  <rect x="100" y="340" width="120" height="30" class="box" fill="#a5d6a7" stroke="#2e7d32"/>
+  <text x="160" y="360" class="sublabel" text-anchor="middle">Static Routing</text>
+
+  <rect x="240" y="340" width="120" height="30" class="box" fill="#a5d6a7" stroke="#2e7d32"/>
+  <text x="300" y="360" class="sublabel" text-anchor="middle">Semantic Routing</text>
+
+  <rect x="380" y="340" width="120" height="30" class="box" fill="#a5d6a7" stroke="#2e7d32"/>
+  <text x="440" y="360" class="sublabel" text-anchor="middle">Load Balancing</text>
+
+  <rect x="520" y="340" width="120" height="30" class="box" fill="#a5d6a7" stroke="#2e7d32"/>
+  <text x="580" y="360" class="sublabel" text-anchor="middle">Failover</text>
+
+  <!-- Registry Layer -->
+  <rect x="80" y="390" width="500" height="70" class="box" fill="#c8e6c9" stroke="#2e7d32"/>
+  <text x="330" y="410" class="label" text-anchor="middle" fill="#2e7d32">Registry Center</text>
+
+  <rect x="100" y="420" width="90" height="30" class="box" fill="#a5d6a7" stroke="#2e7d32"/>
+  <text x="145" y="440" class="sublabel" text-anchor="middle">API/MCP/ACP/A2A</text>
+
+  <rect x="200" y="420" width="90" height="30" class="box" fill="#a5d6a7" stroke="#2e7d32"/>
+  <text x="245" y="440" class="sublabel" text-anchor="middle">Health Check</text>
+
+  <rect x="300" y="420" width="90" height="30" class="box" fill="#a5d6a7" stroke="#2e7d32"/>
+  <text x="345" y="440" class="sublabel" text-anchor="middle">Metadata</text>
+
+  <rect x="400" y="420" width="90" height="30" class="box" fill="#a5d6a7" stroke="#2e7d32"/>
+  <text x="445" y="440" class="sublabel" text-anchor="middle">Nacos</text>
+
+  <!-- Admin Console -->
+  <rect x="600" y="390" width="520" height="70" class="box" fill="#c8e6c9" stroke="#2e7d32"/>
+  <text x="860" y="410" class="label" text-anchor="middle" fill="#2e7d32">Admin Console</text>
+
+  <rect x="620" y="420" width="90" height="30" class="box" fill="#a5d6a7" stroke="#2e7d32"/>
+  <text x="665" y="440" class="sublabel" text-anchor="middle">Resources</text>
+
+  <rect x="720" y="420" width="90" height="30" class="box" fill="#a5d6a7" stroke="#2e7d32"/>
+  <text x="765" y="440" class="sublabel" text-anchor="middle">Config</text>
+
+  <rect x="820" y="420" width="90" height="30" class="box" fill="#a5d6a7" stroke="#2e7d32"/>
+  <text x="865" y="440" class="sublabel" text-anchor="middle">Permissions</text>
+
+  <rect x="920" y="420" width="90" height="30" class="box" fill="#a5d6a7" stroke="#2e7d32"/>
+  <text x="965" y="440" class="sublabel" text-anchor="middle">Audit Log</text>
+
+  <!-- Arrow down -->
+  <line x1="600" y1="470" x2="600" y2="500" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- AI Services Layer -->
+  <rect x="50" y="500" width="1100" height="120" class="box" fill="url(#serviceGrad)" stroke="#e65100" stroke-width="2"/>
+  <text x="600" y="525" class="subtitle" text-anchor="middle" fill="#e65100">AI Services Layer</text>
+
+  <rect x="80" y="540" width="180" height="60" class="box" fill="#ffe0b2" stroke="#e65100"/>
+  <text x="170" y="565" class="label" text-anchor="middle">Agent Service</text>
+  <text x="170" y="580" class="sublabel" text-anchor="middle">Customer / Research / Coding</text>
+
+  <rect x="280" y="540" width="180" height="60" class="box" fill="#ffe0b2" stroke="#e65100"/>
+  <text x="370" y="565" class="label" text-anchor="middle">Skill Service</text>
+  <text x="370" y="580" class="sublabel" text-anchor="middle">Summarization / Code Gen</text>
+
+  <rect x="480" y="540" width="180" height="60" class="box" fill="#ffe0b2" stroke="#e65100"/>
+  <text x="570" y="565" class="label" text-anchor="middle">Plugin Service</text>
+  <text x="570" y="580" class="sublabel" text-anchor="middle">Filesystem / Web Search</text>
+
+  <rect x="680" y="540" width="180" height="60" class="box" fill="#ffe0b2" stroke="#e65100"/>
+  <text x="770" y="565" class="label" text-anchor="middle">Model Service</text>
+  <text x="770" y="580" class="sublabel" text-anchor="middle">GPT-4 / Claude / Local</text>
+
+  <rect x="880" y="540" width="180" height="60" class="box" fill="#ffe0b2" stroke="#e65100"/>
+  <text x="970" y="565" class="label" text-anchor="middle">Workflow Service</text>
+  <text x="970" y="580" class="sublabel" text-anchor="middle">Orchestration Engine</text>
+
+  <!-- Arrow down -->
+  <line x1="600" y1="620" x2="600" y2="650" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- Infrastructure Layer -->
+  <rect x="50" y="650" width="1100" height="200" class="box" fill="url(#infraGrad)" stroke="#c62828" stroke-width="2"/>
+  <text x="600" y="675" class="subtitle" text-anchor="middle" fill="#c62828">Infrastructure Layer</text>
+
+  <!-- Core Infrastructure -->
+  <rect x="80" y="690" width="500" height="70" class="box" fill="#f8bbd0" stroke="#c62828"/>
+  <text x="330" y="710" class="label" text-anchor="middle" fill="#c62828">Core Infrastructure</text>
+
+  <rect x="100" y="720" width="90" height="30" class="box" fill="#f48fb1" stroke="#c62828"/>
+  <text x="145" y="740" class="sublabel" text-anchor="middle">Nacos</text>
+
+  <rect x="200" y="720" width="90" height="30" class="box" fill="#f48fb1" stroke="#c62828"/>
+  <text x="245" y="740" class="sublabel" text-anchor="middle">Redis</text>
+
+  <rect x="300" y="720" width="90" height="30" class="box" fill="#f48fb1" stroke="#c62828"/>
+  <text x="345" y="740" class="sublabel" text-anchor="middle">MySQL</text>
+
+  <rect x="400" y="720" width="90" height="30" class="box" fill="#f48fb1" stroke="#c62828"/>
+  <text x="445" y="740" class="sublabel" text-anchor="middle">RocketMQ</text>
+
+  <!-- Observability -->
+  <rect x="600" y="690" width="520" height="70" class="box" fill="#f8bbd0" stroke="#c62828"/>
+  <text x="860" y="710" class="label" text-anchor="middle" fill="#c62828">Observability</text>
+
+  <rect x="620" y="720" width="90" height="30" class="box" fill="#f48fb1" stroke="#c62828"/>
+  <text x="665" y="740" class="sublabel" text-anchor="middle">SkyWalking</text>
+
+  <rect x="720" y="720" width="90" height="30" class="box" fill="#f48fb1" stroke="#c62828"/>
+  <text x="765" y="740" class="sublabel" text-anchor="middle">Prometheus</text>
+
+  <rect x="820" y="720" width="90" height="30" class="box" fill="#f48fb1" stroke="#c62828"/>
+  <text x="865" y="740" class="sublabel" text-anchor="middle">Grafana</text>
+
+  <rect x="920" y="720" width="90" height="30" class="box" fill="#f48fb1" stroke="#c62828"/>
+  <text x="965" y="740" class="sublabel" text-anchor="middle">Elasticsearch</text>
+
+  <!-- Semantic Routing -->
+  <rect x="80" y="770" width="500" height="70" class="box" fill="#f8bbd0" stroke="#c62828"/>
+  <text x="330" y="790" class="label" text-anchor="middle" fill="#c62828">Semantic Routing Infrastructure</text>
+
+  <rect x="100" y="800" width="90" height="30" class="box" fill="#f48fb1" stroke="#c62828"/>
+  <text x="145" y="820" class="sublabel" text-anchor="middle">Milvus</text>
+
+  <rect x="200" y="800" width="90" height="30" class="box" fill="#f48fb1" stroke="#c62828"/>
+  <text x="245" y="820" class="sublabel" text-anchor="middle">Embedding</text>
+
+  <!-- Arrow marker -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#666"/>
+    </marker>
+  </defs>
+</svg>

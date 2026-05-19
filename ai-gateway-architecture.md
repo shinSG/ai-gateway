@@ -130,6 +130,8 @@
 
 ### 2.1 高层架构
 
+> 📐 **高清架构图**: [system-architecture.svg](docs/diagrams/system-architecture.svg) | [Mermaid 源码](docs/diagrams/system-architecture.mmd)
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
 │                               客户端层 (Client Layer)                                    │
@@ -326,6 +328,8 @@ graph TB
 
 ### 2.3 数据流
 
+> 📐 **高清流程图**: [request-flow.svg](docs/diagrams/request-flow.svg) | [Mermaid 源码](docs/diagrams/request-flow.mmd)
+
 #### 2.3.1 AI 请求处理流程
 
 ```mermaid
@@ -469,6 +473,8 @@ sequenceDiagram
 ```
 
 #### 2.3.5 语义路由详细流程
+
+> 📐 **高清流程图**: [semantic-routing.svg](docs/diagrams/semantic-routing.svg) | [Mermaid 源码](docs/diagrams/semantic-routing.mmd)
 
 ```mermaid
 flowchart TD
@@ -907,6 +913,8 @@ public enum RouteStrategy {
 ```
 
 ### 3.3 模块依赖关系
+
+> 📐 **高清架构图**: [module-dependency.svg](docs/diagrams/module-dependency.svg) | [Mermaid 源码](docs/diagrams/module-dependency.mmd)
 
 ```mermaid
 graph TB
