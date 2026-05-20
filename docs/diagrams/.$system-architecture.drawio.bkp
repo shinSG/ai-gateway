@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2024-01-15T10:00:00.000Z" agent="Claude" version="24.0.0" type="device">
+  <diagram id="system-architecture" name="系统架构">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- 客户端层 -->
+        <mxCell id="client-layer" value="客户端层 (Client Layer)" style="swimlane;startSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="1520" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="web-app" value="Web 应用&#xa;(Vue/React)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="client-layer">
+          <mxGeometry x="40" y="40" width="120" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="mobile-app" value="移动端 APP&#xa;(iOS/Android)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="client-layer">
+          <mxGeometry x="200" y="40" width="120" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="mini-program" value="小程序&#xa;(微信/支付宝)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="client-layer">
+          <mxGeometry x="360" y="40" width="120" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="third-party" value="第三方系统&#xa;(ERP/CRM)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="client-layer">
+          <mxGeometry x="520" y="40" width="120" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="ai-agent" value="AI Agent&#xa;(LangChain)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="client-layer">
+          <mxGeometry x="680" y="40" width="120" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="cli-tool" value="CLI 工具&#xa;(Python)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="client-layer">
+          <mxGeometry x="840" y="40" width="120" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- AI 网关层 -->
+        <mxCell id="gateway-layer" value="AI 网关层 (AI Gateway)" style="swimlane;startSize=30;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="200" width="1520" height="300" as="geometry"/>
+        </mxCell>
+
+        <!-- API 接入层 -->
+        <mxCell id="api-layer" value="API 接入层 (Gateway Layer)" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="gateway-layer">
+          <mxGeometry x="40" y="40" width="1440" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="auth" value="认证鉴权&#xa;OAuth2 · JWT · API Key" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="api-layer">
+          <mxGeometry x="40" y="40" width="160" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="rate-limit" value="限流熔断&#xa;Sentinel · 令牌桶 · 滑动窗口" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="api-layer">
+          <mxGeometry x="240" y="40" width="200" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="protocol-convert" value="协议转换&#xa;REST↔MCP · REST↔A2A · REST↔ACP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="api-layer">
+          <mxGeometry x="480" y="40" width="240" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="request-filter" value="请求过滤&#xa;XSS/SQL 过滤 · 参数校验" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="api-layer">
+          <mxGeometry x="760" y="40" width="180" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="response-cache" value="响应缓存&#xa;Redis" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="api-layer">
+          <mxGeometry x="980" y="40" width="120" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- 智能路由层 -->
+        <mxCell id="router-layer" value="智能路由层 (Router Layer)" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="gateway-layer">
+          <mxGeometry x="40" y="140" width="1440" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="static-route" value="静态路由&#xa;路径匹配 · Header匹配 · Query匹配" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="router-layer">
+          <mxGeometry x="40" y="40" width="200" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="semantic-route" value="语义路由&#xa;向量相似度 · 能力匹配 · 成本优化" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="router-layer">
+          <mxGeometry x="280" y="40" width="200" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="load-balance" value="负载均衡&#xa;轮询/加权 · 最小连接 · 延迟优先" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="router-layer">
+          <mxGeometry x="520" y="40" width="200" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="failover" value="故障转移&#xa;熔断降级 · 重试策略 · 备用服务" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="router-layer">
+          <mxGeometry x="760" y="40" width="200" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="milvus" value="Milvus 向量库&#xa;服务描述向量检索" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="router-layer">
+          <mxGeometry x="1040" y="40" width="140" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- 注册中心 -->
+        <mxCell id="registry-layer" value="注册中心 (Registry Layer)" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="gateway-layer">
+          <mxGeometry x="40" y="300" width="1440" height="0" as="geometry"/>
+        </mxCell>
+
+        <!-- AI 服务层 -->
+        <mxCell id="service-layer" value="AI 服务层 (AI Services)" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="540" width="1520" height="160" as="geometry"/>
+        </mxCell>
+        <mxCell id="agent-service" value="Agent 服务&#xa;客服Agent · 研究Agent · 编码Agent" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="service-layer">
+          <mxGeometry x="40" y="40" width="200" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="skill-service" value="Skill 服务&#xa;文本摘要 · 代码生成 · 翻译技能" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="service-layer">
+          <mxGeometry x="280" y="40" width="200" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="plugin-service" value="Plugin 服务&#xa;文件系统 · Web搜索 · 数据库" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="service-layer">
+          <mxGeometry x="520" y="40" width="200" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="model-service" value="Model 服务&#xa;GPT-4 · Claude · 本地模型" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="service-layer">
+          <mxGeometry x="760" y="40" width="200" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="workflow-service" value="Workflow 服务&#xa;工作流编排引擎 · DAG调度" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="service-layer">
+          <mxGeometry x="1000" y="40" width="200" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- 基础设施层 -->
+        <mxCell id="infra-layer" value="基础设施层 (Infrastructure)" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="40" y="740" width="1520" height="160" as="geometry"/>
+        </mxCell>
+        <mxCell id="nacos" value="Nacos&#xa;服务发现 · 配置中心 · 3节点集群" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="infra-layer">
+          <mxGeometry x="40" y="40" width="160" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="redis" value="Redis&#xa;缓存/限流 · 分布式锁 · Cluster模式" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="infra-layer">
+          <mxGeometry x="240" y="40" width="160" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="mysql" value="MySQL&#xa;数据存储 · 审计日志 · 主从复制" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="infra-layer">
+          <mxGeometry x="440" y="40" width="160" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="rocketmq" value="RocketMQ&#xa;消息队列 · 事件驱动 · 异步解耦" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="infra-layer">
+          <mxGeometry x="640" y="40" width="160" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="skywalking" value="SkyWalking&#xa;链路追踪 · 性能分析 · 拓扑发现" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="infra-layer">
+          <mxGeometry x="840" y="40" width="160" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="milvus-infra" value="Milvus&#xa;向量数据库 · 语义检索" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="infra-layer">
+          <mxGeometry x="1040" y="40" width="160" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="elasticsearch" value="Elasticsearch&#xa;日志聚合 · 全文检索" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="infra-layer">
+          <mxGeometry x="1240" y="40" width="160" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- 连接线 -->
+        <mxCell id="edge1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="web-app" target="auth" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="mobile-app" target="auth" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="mini-program" target="auth" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="third-party" target="auth" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge5" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="ai-agent" target="auth" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge6" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="cli-tool" target="auth" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="edge7" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="auth" target="static-route" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge8" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="rate-limit" target="static-route" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge9" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="protocol-convert" target="static-route" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge10" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="request-filter" target="static-route" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge11" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="response-cache" target="static-route" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="edge12" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="static-route" target="agent-service" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge13" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="semantic-route" target="skill-service" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge14" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="load-balance" target="plugin-service" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge15" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="failover" target="model-service" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge16" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="milvus" target="workflow-service" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="edge17" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="agent-service" target="nacos" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge18" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="skill-service" target="redis" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge19" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="plugin-service" target="mysql" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge20" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="model-service" target="rocketmq" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge21" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="workflow-service" target="skywalking" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

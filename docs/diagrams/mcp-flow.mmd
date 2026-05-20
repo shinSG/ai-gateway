@@ -1,32 +1,56 @@
 sequenceDiagram
-    participant Client as MCP 客户端
-    participant GW as AI 网关
-    participant Protocol as 协议转换层
+    actor MCPClient as MCP 客户端<br/>(LLM / Agent)
+    participant Envoy as Envoy 数据面
+    participant Protocol as 协议转换插件<br/>(protocol-convert)
+    participant Auth as 认证鉴权插件
     participant Router as 路由引擎
-    participant MCP as MCP Server
+    participant Nacos as Nacos 3.0
+    participant MCPServer as MCP Server
 
-    Client->>GW: MCP 请求 (JSON-RPC)
-    GW->>Protocol: 解析 MCP 消息类型
+    Note over MCPClient,Envoy: MCP 使用 JSON-RPC 2.0 协议
 
-    alt tools/list - 列出工具
-        Protocol->>Router: 查询 MCP 服务工具列表
-        Router->>MCP: 转发 tools/list 请求
-        MCP-->>Router: 返回工具定义列表
-        Router-->>Protocol: 工具列表
-        Protocol-->>GW: 格式化 MCP 响应
-    else tools/call - 调用工具
-        Protocol->>Router: 解析工具调用参数
-        Router->>MCP: 转发 tools/call 请求
-        MCP->>MCP: 执行工具逻辑
-        MCP-->>Router: 返回工具执行结果
-        Router-->>Protocol: 工具结果
-        Protocol-->>GW: 格式化 MCP 响应
-    else resources/read - 读取资源
-        Protocol->>Router: 解析资源 URI
-        Router->>MCP: 转发 resources/read 请求
-        MCP-->>Router: 返回资源内容
-        Router-->>Protocol: 资源数据
-        Protocol-->>GW: 格式化 MCP 响应
+    MCPClient->>Envoy: HTTP POST + JSON-RPC<br/>method: tools/list | tools/call | resources/read
+
+    Envoy->>Protocol: WASM 插件: 协议识别
+    Protocol->>Protocol: 解析 JSON-RPC method 前缀<br/>识别为 MCP 协议
+    Note over Protocol: 注入 X-Protocol: MCP<br/>标记请求类型
+
+    Protocol->>Auth: 认证鉴权
+    Auth->>Auth: 验证 JWT/API Key/OAuth2
+    alt 认证失败
+        Auth-->>MCPClient: 401 Unauthorized
     end
 
-    GW-->>Client: MCP 响应 (JSON-RPC)
+    Auth->>Router: 路由决策
+
+    alt tools/list — 聚合工具列表
+        Router->>Nacos: 查询所有 serviceType=MCP 的服务
+        Nacos-->>Router: 返回 MCP 服务列表 + 工具元数据
+        Router->>Router: 按客户端权限过滤工具<br/>合并去重 (按工具名称)
+        Router-->>MCPClient: 聚合的工具列表 JSON-RPC 响应
+
+    else tools/call — 调用工具
+        Router->>Nacos: 按工具名称匹配 MCP 服务
+        Nacos-->>Router: 返回服务实例 + 工具定义
+        Router->>MCPServer: 转发 tools/call (JSON-RPC)
+        MCPServer->>MCPServer: 执行工具逻辑<br/>· 校验 inputSchema<br/>· 执行工具<br/>· 生成 outputSchema
+        MCPServer-->>Router: 工具执行结果 (JSON-RPC)
+        Router-->>MCPClient: 返回 tools/call 响应
+
+    else resources/read — 读取资源
+        Router->>Nacos: 按资源 URI 匹配 MCP 服务
+        Nacos-->>Router: 返回服务实例
+        Router->>MCPServer: 转发 resources/read
+        MCPServer-->>Router: 返回资源内容 (MIME)
+        Router-->>MCPClient: 返回 resources/read 响应
+
+    else SSE 流式传输
+        Router->>MCPServer: 建立 SSE 长连接
+        Note over Envoy: Envoy 配置 SSE 流式超时<br/>逐事件透传，不缓冲
+        loop 流式推送
+            MCPServer-->>Router: SSE 事件 (data chunk)
+            Router-->>MCPClient: 实时推送流式结果
+        end
+    end
+
+    Note over Envoy: 采集 MCP 指标<br/>· 工具调用次数 · 延迟 · 成功率 · 错误分布

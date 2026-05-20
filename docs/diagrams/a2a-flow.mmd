@@ -1,28 +1,67 @@
 sequenceDiagram
-    participant AgentA as Agent A (调用方)
-    participant GW as AI 网关
-    participant Registry as 注册中心
+    actor AgentA as 请求 Agent<br/>(Agent A)
+    participant Envoy as Envoy 数据面
+    participant Protocol as 协议识别插件
     participant Router as 路由引擎
-    participant AgentB as Agent B (被调用方)
+    participant Nacos as Nacos 3.0
+    participant AgentB as 目标 Agent<br/>(Agent B)
 
-    AgentA->>GW: A2A 请求 (Task/Send)
-    GW->>GW: 验证 Agent Card · 解析任务类型
-    GW->>Registry: 发现目标 Agent
-    Registry-->>GW: 返回可用 Agent 实例列表
-    GW->>Router: 路由决策 (能力匹配 + 负载均衡)
-    Router-->>GW: 选定目标 Agent B
+    Note over AgentA,AgentB: 基于 Google A2A 协议规范
 
-    GW->>AgentB: 转发 A2A 任务请求
-    AgentB->>AgentB: 执行任务 (可能长时间运行)
-    AgentB-->>GW: 任务状态更新 (PENDING → RUNNING)
-    GW-->>AgentA: 推送任务状态通知
+    rect rgb(240, 248, 255)
+        Note over AgentA,Nacos: 阶段 1: Agent 发现 (Agent Discovery)
+        AgentA->>Envoy: GET /.well-known/agent-card
+        Envoy->>Protocol: 识别为 A2A Agent Card 请求
+        Protocol->>Router: 请求 Agent Card 列表
+        Router->>Nacos: 查询所有 serviceType=A2A 的服务
+        Nacos-->>Router: 返回 A2A Agent 列表 + Agent Card 元数据
+        Router-->>AgentA: 聚合的 Agent Card 列表<br/>(name+capabilities+tasks+inputModes)
+    end
 
-    AgentB-->>GW: 任务完成 (COMPLETED / FAILED)
-    GW-->>AgentA: 返回 A2A 响应
+    rect rgb(255, 248, 240)
+        Note over AgentA,AgentB: 阶段 2: 任务分发 (Task Distribution)
+        AgentA->>AgentA: 根据 Agent Card 选择合适的目标
+        AgentA->>Envoy: POST /a2a/tasks<br/>taskType + taskId + input + callbackUrl
+        Envoy->>Protocol: WASM 协议识别: A2A
+        Protocol->>Router: 任务路由
 
-    opt 流式输出
-        loop 流式传输
-            AgentB-->>GW: 中间结果 (SSE)
-            GW-->>AgentA: 转发流式数据
+        Router->>Nacos: 查询目标 Agent B 的实例
+        Nacos-->>Router: 返回 Agent B 实例列表
+        Router->>Router: 负载均衡选择实例
+        Router->>AgentB: 转发任务请求
+    end
+
+    rect rgb(240, 255, 240)
+        Note over AgentA,AgentB: 阶段 3: 任务执行与状态管理 (Task Execution)
+
+        AgentB->>AgentB: 解析 taskDefinition<br/>校验 inputSchema
+        AgentB-->>Router: 任务状态: QUEUED → IN_PROGRESS
+        Router-->>AgentA: 推送状态通知
+
+        alt 同步执行
+            AgentB->>AgentB: 执行任务
+            AgentB-->>Router: 任务状态: COMPLETED + output
+            Router-->>AgentA: 返回任务结果
+        else 异步执行
+            AgentB-->>Router: 立即返回 taskId (ACCEPTED)
+            Router-->>AgentA: taskId (可后续查询状态)
+            Note over AgentB: Agent B 异步执行任务
+            AgentB->>Router: 回调 POST /a2a/callback<br/>状态更新 (COMPLETED/FAILED)
+            Router-->>AgentA: 推送任务完成通知
+        else 流式执行 (SSE/WebSocket)
+            Note over Envoy: Envoy 配置流式超时
+            loop 流式输出
+                AgentB-->>Router: 中间结果 (SSE chunk)
+                Router-->>AgentA: 实时推送进度/结果
+            end
+            AgentB-->>Router: 流式完成 (COMPLETED)
+            Router-->>AgentA: 任务完成
         end
     end
+
+    rect rgb(248, 240, 255)
+        Note over AgentA,AgentB: 阶段 4: 状态流转
+        Note over Router: 网关维护任务状态机<br/>CREATED→QUEUED→IN_PROGRESS→COMPLETED<br/>                     ↘FAILED<br/>                     ↘CANCELLED
+    end
+
+    Note over Envoy: 采集 A2A 指标<br/>· 任务执行时长 · 成功率 · Agent 调用拓扑<br/>· 审计日志: Agent A → 网关 → Agent B 完整链路

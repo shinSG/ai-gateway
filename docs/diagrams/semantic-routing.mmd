@@ -1,31 +1,51 @@
 flowchart TD
-    A[接收请求] --> B{静态路由匹配?}
-    B -->|匹配成功| C[直接转发到目标服务]
-    B -->|未匹配| D[进入语义路由]
+    subgraph Phase1["阶段 1: 语义特征提取"]
+        A["接收请求<br/>(静态路由未命中)"] --> B["提取语义特征<br/>· 请求内容 (prompt/question)<br/>· 上下文 (对话历史/偏好)<br/>· 元数据 (clientId/sessionId)"]
+        B --> C["输出: 结构化语义特征<br/>intent + entities + domain + complexity"]
+    end
 
-    D --> E[构建请求文本]
-    E --> F["capabilities: multi-turn-dialogue<br/>description: 客服咨询<br/>query: 产品退换货政策"]
+    subgraph Phase2["阶段 2: 查询向量化"]
+        C --> D["构建查询文本<br/>'意图:{intent} 实体:{entities}<br/> 领域:{domain} 输入:{userInput}'"]
+        D --> E["调用 Embedding 服务<br/>模型: text-embedding-3-large<br/>输出: 3072维向量<br/>L2 Normalization"]
+    end
 
-    F --> G[Embedding 服务生成向量]
-    G --> H[Milvus 向量检索 Top-K]
+    subgraph Phase3["阶段 3: 向量检索"]
+        E --> F["Milvus 向量库 ANN 检索<br/>Collection: ai_services<br/>Index: IVF_FLAT / HNSW<br/>Metric: COSINE<br/>Top-K: 10"]
+        F --> G["返回候选服务列表<br/>serviceId + 相似度分数 + 元数据快照"]
+    end
 
-    H --> I[过滤 UP 状态服务]
-    I --> J{候选服务数量 > 0?}
+    subgraph Phase4["阶段 4: 多维排序与筛选"]
+        G --> H{"候选服务数量 > 0?"}
+        H -->|否| I["路由失败<br/>降级到默认服务"]
+        H -->|是| J["排除不可用服务<br/>· status != UP<br/>· 相似度 < 阈值(0.6)<br/>· 能力完全不匹配"]
 
-    J -->|否| K[返回路由失败<br/>降级到默认服务]
-    J -->|是| L[应用负载均衡策略]
+        J --> K["综合评分计算<br/>━━━━━━━━━━━━━━━━<br/>Score = 0.40 × 语义相似度<br/>　　　+ 0.25 × 能力匹配度<br/>　　　+ 0.20 × 服务质量分<br/>　　　+ 0.10 × 成本分数<br/>　　　+ 0.05 × 延迟分数"]
 
-    L --> M{选择策略}
-    M -->|ROUND_ROBIN| N[轮询选择]
-    M -->|WEIGHTED| O[加权轮询]
-    M -->|LEAST_CONN| P[最小连接数]
-    M -->|CAPABILITY_MATCH| Q[能力匹配评分]
-    M -->|COST_OPTIMIZED| R[成本最优选择]
-    M -->|LATENCY_FIRST| M2[延迟优先选择]
+        K --> L["按综合评分排序<br/>选出最高分服务"]
+    end
 
-    N & O & P & Q & R & M2 --> S[返回路由结果<br/>目标服务 + 实例地址]
-    C --> T[转发请求]
-    S --> T
-    K --> T
-    T --> U[AI 服务处理]
-    U --> V[返回响应]
+    subgraph Phase5["阶段 5: 路由决策"]
+        L --> M["确定路由目标<br/>服务ID + 实例地址"]
+        M --> N["记录路由决策日志<br/>· 请求ID · 查询向量 · Top-K候选<br/>· 各项分数 · 最终选择 · 耗时"]
+
+        N --> O["缓存路由结果<br/>━━━━━━━━━━━━━━━━<br/>L1: 精确匹配 (5min)<br/>L2: 语义近似 (10min)<br/>L3: 意图缓存 (30min)"]
+    end
+
+    O --> P["转发请求到目标 AI 服务"]
+
+    I --> P
+
+    subgraph Maintenance["索引维护 (异步)"]
+        Q["新服务注册"] --> R["生成服务描述向量"]
+        R --> S["写入 Milvus"]
+        T["服务下线"] --> U["删除 Milvus 向量"]
+        V["元数据更新"] --> W["重新生成向量并更新"]
+        X["每周全量重建"] --> Y["确保向量与NA服务状态一致"]
+    end
+
+    style Phase1 fill:#E3F2FD,stroke:#1976D2
+    style Phase2 fill:#F3E5F5,stroke:#7B1FA2
+    style Phase3 fill:#E8F5E9,stroke:#388E3C
+    style Phase4 fill:#FFF3E0,stroke:#F57C00
+    style Phase5 fill:#FCE4EC,stroke:#C2185B
+    style Maintenance fill:#ECEFF1,stroke:#546E7A

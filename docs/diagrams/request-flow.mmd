@@ -1,39 +1,60 @@
 sequenceDiagram
-    participant C as 客户端
-    participant GW as API 接入层
-    participant Auth as 认证鉴权
-    participant RateLimit as 限流熔断
-    participant Filter as 请求过滤
-    participant Router as 智能路由层
-    participant Registry as 注册中心
+    actor Client as 客户端
+    participant Envoy as Envoy 数据面
+    participant WASM as WASM 插件链
+    participant Auth as 认证插件<br/>(jwt-auth/oauth2/api-key)
+    participant Filter as 请求过滤<br/>(xss/sql/校验)
+    participant RateLimit as 限流熔断<br/>(rate-limit/circuit-breaker)
+    participant Protocol as 协议转换<br/>(protocol-convert)
+    participant Router as 路由引擎
+    participant XDS as xDS 配置
+    participant CP as 控制面<br/>(Spring Boot)
     participant Milvus as Milvus 向量库
     participant AI as AI 服务
 
-    C->>GW: HTTP/HTTPS 请求
-    GW->>Auth: 验证 JWT Token / API Key
+    Client->>Envoy: HTTP/HTTPS 请求
+    Envoy->>WASM: 进入 WASM 插件链
+
+    Note over WASM,Auth: Request Phase — 按优先级顺序执行
+
+    WASM->>Auth: 优先级 1-3: 认证鉴权
     alt 认证失败
-        Auth-->>C: 401 Unauthorized
+        Auth-->>Client: 401 Unauthorized
     end
-    Auth->>RateLimit: 认证通过，传递请求
-    RateLimit->>RateLimit: 令牌桶/滑动窗口限流检查
-    alt 触发限流
-        RateLimit-->>C: 429 Too Many Requests
+    Auth->>Filter: 优先级 5: 请求过滤
+    Filter->>Filter: XSS/SQL 注入防护 · 参数校验
+    Filter->>RateLimit: 优先级 10-11: 限流熔断检查
+    alt 触发限流/熔断
+        RateLimit-->>Client: 429 Too Many Requests / 503 服务熔断
     end
-    RateLimit->>Filter: 限流通过，传递请求
-    Filter->>Filter: XSS/SQL注入过滤 · 参数校验 · 协议转换
-    Filter->>Router: 过滤通过，传递请求
+    RateLimit->>Protocol: 优先级 20: 协议识别与转换
+    Protocol->>Protocol: 识别 API/MCP/ACP/A2A 协议类型
+
+    Protocol->>Router: 路由决策
+
+    Router->>XDS: 获取路由配置 (xDS)
+    XDS-->>Router: 路由表 + 服务列表
+    Note over XDS,CP: 控制面通过 xDS 实时推送配置
 
     alt 静态路由匹配
-        Router->>Router: 路径/Header/Query 规则匹配
-        Router->>Registry: 查询目标服务实例
-    else 语义路由匹配
-        Router->>Milvus: 生成请求向量，检索相似服务
-        Milvus-->>Router: 返回 Top-K 匹配结果
-        Router->>Registry: 获取服务详情
-        Router->>Router: 能力匹配 + 成本优化 + 负载均衡
+        Router->>Router: 路径/Header/Query 精确匹配
+    else 语义路由匹配 (未命中时)
+        Router->>Milvus: 向量相似度检索 Top-K
+        Milvus-->>Router: 返回候选服务列表
+        Router->>Router: 多维评分排序<br/>(语义相似度 + 能力匹配 + 服务质量 + 成本)
     end
 
-    Router->>AI: 转发请求到目标 AI 服务
+    Router->>Router: 负载均衡 (加权轮询/最小连接/延迟优先)
+    Router->>AI: 转发请求 (注入 x-request-id, x-trace-id)
     AI-->>Router: 服务响应
-    Router-->>GW: 返回响应
-    GW-->>C: HTTP 响应 (支持 SSE 流式)
+
+    Note over WASM,Protocol: Response Phase — 执行顺序与请求阶段相反 (从右到左)
+
+    Router->>WASM: 进入响应插件链
+    WASM->>WASM: 响应缓存 (优先级 15)
+    WASM->>WASM: 响应转换 (优先级 20)
+    WASM->>WASM: 指标采集 (优先级 101)
+    WASM->>WASM: 访问日志 (优先级 100)
+
+    WASM-->>Envoy: 完成处理
+    Envoy-->>Client: HTTP 响应 (支持 SSE 流式)

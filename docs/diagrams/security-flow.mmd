@@ -1,39 +1,74 @@
 sequenceDiagram
-    participant C as 客户端
-    participant GW as AI 网关
-    participant Auth as 认证服务
-    participant RBAC as RBAC 授权
+    actor Client as 客户端
+    participant Envoy as Envoy 数据面
+    participant APIKey as API Key 插件<br/>(优先级 3)
+    participant JWT as JWT Auth 插件<br/>(优先级 1)
+    participant OAuth2 as OAuth2 插件<br/>(优先级 2)
+    participant Control as 控制面<br/>(RBAC 授权)
     participant Audit as 审计日志
-    participant AI as AI 服务
+    participant Svc as AI 服务
 
-    C->>GW: 携带 Token 的请求
+    Note over Envoy: 认证插件链在 Request Phase 最先执行
 
-    alt JWT Token 认证
-        GW->>Auth: 验证 JWT 签名和有效期
-        Auth-->>GW: Token 有效，返回用户信息
-    else API Key 认证
-        GW->>Auth: 验证 API Key
-        Auth-->>GW: Key 有效，返回应用信息
-    else OAuth2 认证
-        GW->>Auth: 验证 Access Token
-        Auth->>Auth: 检查 Token 权限范围
-        Auth-->>GW: Token 有效
+    Client->>Envoy: HTTP 请求 (携带认证凭证)
+
+    Envoy->>APIKey: 优先级 3: API Key 认证
+    alt 请求包含 X-API-Key 头
+        APIKey->>APIKey: 提取 API Key<br/>验证有效性 + 过期检查
+        alt API Key 有效
+            APIKey->>APIKey: 注入 X-User-Id, X-User-Roles, X-Client-Id
+            Note over APIKey: 认证成功，跳过后续认证插件
+        else API Key 无效
+            APIKey-->>Client: 401 Unauthorized<br/>{"error":"invalid_api_key"}
+        end
     end
 
-    GW->>RBAC: 检查用户/应用权限
-    RBAC->>RBAC: 匹配 RBAC 策略<br/>(角色 → 权限 → 资源)
+    APIKey->>JWT: 无 API Key 头，尝试 JWT
+    JWT->>JWT: 提取 Authorization: Bearer token
+    JWT->>JWT: 验证 JWT 签名 (RS256/HS256)<br/>校验 Claims: iss, aud, exp, nbf
+    alt JWT 有效
+        JWT->>JWT: 解析用户身份和权限<br/>注入 X-User-Id, X-User-Roles
+        Note over JWT: 认证成功，跳过后续认证插件
+    else JWT 无效或过期
+        JWT-->>Client: 401 Unauthorized<br/>{"error":"invalid_token"}
+    end
+
+    JWT->>OAuth2: 无 Bearer Token，触发 OAuth2
+    OAuth2->>OAuth2: 检测未认证状态
+    alt 首次访问 (无 Session)
+        OAuth2-->>Client: 302 Redirect → OAuth2 Authorization Server
+        Note over Client: 用户完成授权流程<br/>Authorization Code → Token
+    else 已有 Access Token
+        OAuth2->>OAuth2: 调用 Introspection Endpoint<br/>验证 Token 有效性 + 权限范围
+        alt Token 有效
+            OAuth2->>OAuth2: 创建会话，注入用户上下文
+        else Token 无效
+            OAuth2-->>Client: 302 Redirect 重新授权
+        end
+    end
+
+    Note over Envoy,Control: 认证完成，进入授权阶段
+
+    Envoy->>Control: RBAC 授权检查<br/>传递 X-User-Roles + 请求资源路径
+
+    Control->>Control: 匹配 RBAC 策略<br/>User → Role → Permission → Resource
+    Note over Control: 资源层级<br/>gateway:* service:* route:*<br/>ai:agent:* ai:skill:* ai:model:*
+
     alt 权限不足
-        RBAC-->>GW: 403 Forbidden
-        GW-->>C: 权限不足
+        Control-->>Envoy: 403 Forbidden
+        Envoy->>Audit: 记录授权失败日志
+        Envoy-->>Client: 403 Forbidden
     end
 
-    RBAC-->>GW: 权限验证通过
+    Control-->>Envoy: 授权通过
 
     par 并行处理
-        GW->>Audit: 记录审计日志<br/>(用户 · 操作 · 资源 · 时间 · 结果)
+        Envoy->>Audit: 记录审计日志<br/>· 时间戳 · 事件类型 · 用户ID<br/>· 认证方式 · 请求路径 · 来源IP<br/>· 角色列表 · 使用权限 · traceId
     and
-        GW->>AI: 转发请求
-        AI-->>GW: 服务响应
+        Envoy->>Svc: 转发请求 (携带 X-User-Id 等上下文头)
+        Svc-->>Envoy: 服务响应
     end
 
-    GW-->>C: 返回响应
+    Envoy-->>Client: 返回响应
+
+    Note over Audit: 审计日志异步发送到<br/>Elasticsearch / Kafka<br/>供合规审查和安全分析

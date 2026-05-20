@@ -1,11 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mxfile host="app.diagrams.net" modified="2026-05-20T01:57:16.580404" agent="Claude Diagram Draft" version="21.0.0">
-  <diagram id="d538f24f9792" name="Diagram">
+<mxfile host="app.diagrams.net" modified="2026-05-21T00:02:59.187833" agent="Claude Diagram Draft" version="21.0.0">
+  <diagram id="ee27306c9d0c" name="Diagram">
     <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
       <root>
         <mxCell id="0"/>
         <mxCell id="1" parent="0"/>
-        <mxCell id="00054ce13564" value="capabilities: multi-turn-dialogue<br/>description: 客服咨询<br/>query: 产品退换货政策" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="40" y="40" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="bc06bcfdd2dc" value="阶段 1: 语义特征提取" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="40" y="40" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="12651b35a389" value="接收请求<br/>(静态路由未命中)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="240" y="40" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="05d2a91a5152" value="提取语义特征<br/>· 请求内容 (prompt/question)<br/>· 上下文 (对话历史/偏好)<br/>· 元数据 (clientId/sessionId)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="440" y="40" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="fae300c6967a" value="输出: 结构化语义特征<br/>intent + entities + domain + complexity" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="640" y="40" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="121aea959d62" value="阶段 2: 查询向量化" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="40" y="140" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="3aa913935fb6" value="构建查询文本<br/>'意图:{intent} 实体:{entities}<br/> 领域:{domain} 输入:{userInput}'" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="240" y="140" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="31a838de6813" value="调用 Embedding 服务<br/>模型: text-embedding-3-large<br/>输出: 3072维向量<br/>L2 Normalization" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="440" y="140" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="748d7d6c44db" value="阶段 3: 向量检索" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="640" y="140" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="e2b7b1dbcc49" value="Milvus 向量库 ANN 检索<br/>Collection: ai_services<br/>Index: IVF_FLAT / HNSW<br/>Metric: COSINE<br/>Top-K: 10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="40" y="240" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="ac6b4057169c" value="返回候选服务列表<br/>serviceId + 相似度分数 + 元数据快照" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="240" y="240" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="f6343da1a8d7" value="阶段 4: 多维排序与筛选" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="440" y="240" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="7f462eec8123" value="路由失败<br/>降级到默认服务" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="640" y="240" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="ca37cf814d20" value="排除不可用服务<br/>· status != UP<br/>· 相似度 < 阈值(0.6)<br/>· 能力完全不匹配" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="40" y="340" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="f4905d7675a2" value="综合评分计算<br/>━━━━━━━━━━━━━━━━<br/>Score = 0.40 × 语义相似度<br/>　　　+ 0.25 × 能力匹配度<br/>　　　+ 0.20 × 服务质量分<br/>　　　+ 0.10 × 成本分数<br/>　　　+ 0.05 × 延迟分数" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="240" y="340" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="7dd55201baf9" value="按综合评分排序<br/>选出最高分服务" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="440" y="340" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="4b7f3b3b3045" value="阶段 5: 路由决策" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="640" y="340" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="9fceedffc01c" value="确定路由目标<br/>服务ID + 实例地址" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="40" y="440" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="ece6ae0e20c9" value="记录路由决策日志<br/>· 请求ID · 查询向量 · Top-K候选<br/>· 各项分数 · 最终选择 · 耗时" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="240" y="440" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="8f2d290969ae" value="缓存路由结果<br/>━━━━━━━━━━━━━━━━<br/>L1: 精确匹配 (5min)<br/>L2: 语义近似 (10min)<br/>L3: 意图缓存 (30min)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="440" y="440" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="1b1d40a46b36" value="转发请求到目标 AI 服务" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="640" y="440" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="ac176495dafd" value="索引维护 (异步)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="40" y="540" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="482e6daaebf3" value="新服务注册" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="240" y="540" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="3f1e874cfd25" value="生成服务描述向量" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="440" y="540" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="17bb2b671baf" value="写入 Milvus" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="640" y="540" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="c523c46fc334" value="服务下线" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="40" y="640" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="fa9a61db3d05" value="删除 Milvus 向量" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="240" y="640" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="d22865d1a408" value="元数据更新" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="440" y="640" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="71977ea38087" value="重新生成向量并更新" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="640" y="640" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="c917b8de01cf" value="每周全量重建" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="40" y="740" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="1b712039835d" value="确保向量与NA服务状态一致" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="240" y="740" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="493bb6825640" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="05d2a91a5152" target="fae300c6967a"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="249098f98c11" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="fae300c6967a" target="3aa913935fb6"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="6849e2cbb10b" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="3aa913935fb6" target="31a838de6813"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="8cc83c693a0d" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="31a838de6813" target="e2b7b1dbcc49"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="475004c1ebcc" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="e2b7b1dbcc49" target="ac6b4057169c"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="9879b55ebfe0" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="ca37cf814d20" target="f4905d7675a2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="1b5916eef797" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="f4905d7675a2" target="7dd55201baf9"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="5c81ab91d33b" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="7dd55201baf9" target="9fceedffc01c"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="4022a29fad61" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="9fceedffc01c" target="ece6ae0e20c9"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="d757e2c77a39" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="ece6ae0e20c9" target="8f2d290969ae"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="7a4e578cb915" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="8f2d290969ae" target="1b1d40a46b36"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="cfa7e9e624e4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="7f462eec8123" target="1b1d40a46b36"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="ea7097369372" style="edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="3f1e874cfd25" target="17bb2b671baf"><mxGeometry relative="1" as="geometry"/></mxCell>
       </root>
     </mxGraphModel>
   </diagram>

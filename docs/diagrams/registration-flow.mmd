@@ -1,23 +1,46 @@
 sequenceDiagram
-    participant Service as AI 服务
-    participant Registry as 注册中心
-    participant Nacos as Nacos Server
+    participant AISvc as AI 服务实例
+    participant CP as 控制面<br/>(Spring Boot)
+    participant Nacos as Nacos 3.0<br/>(原生 gRPC)
     participant Embedding as Embedding 服务
     participant Milvus as Milvus 向量库
-    participant Router as 路由引擎
+    participant EnvoyDS as Envoy 数据面
 
-    Service->>Registry: 服务启动，发送注册请求
-    Registry->>Registry: 构建 ServiceMetadata<br/>(serviceType + role + protocolConfig + roleConfig)
-    Registry->>Nacos: 注册实例 + 元数据
-    Nacos-->>Registry: 注册成功
+    Note over AISvc: AI 服务启动
 
-    par 并行处理
-        Registry->>Registry: 启动健康检查定时任务
-    and
-        Registry->>Embedding: 生成服务描述向量<br/>(name + description + capabilities + useCases)
-        Embedding-->>Registry: 返回向量表示
-        Registry->>Milvus: 存储服务向量<br/>(resourceId + 向量 + metadata)
+    AISvc->>CP: POST /api/registry/register<br/>serviceType + role + protocolConfig + roleConfig
+    CP->>CP: 元数据校验<br/>· 格式合法性<br/>· ServiceType ↔ Role 映射合法<br/>· 协议配置一致性<br/>· resourceId 去重检查
+
+    alt 校验失败
+        CP-->>AISvc: 400 校验失败 (详细错误信息)
     end
 
-    Registry->>Router: 通知路由引擎更新路由表
-    Router->>Router: 刷新路由缓存
+    CP->>Nacos: 注册服务实例 + 元数据 KV<br/>使用 Nacos 3.0 原生 gRPC 协议
+    Nacos-->>CP: 注册成功 (长连接保活)
+
+    par 并行处理
+        CP->>CP: 启动健康检查定时任务<br/>(healthCheckInterval)
+    and
+        CP->>Embedding: 生成服务描述向量<br/>(name+description+capabilities+useCases+协议配置)
+        Embedding-->>CP: 返回向量 (3072维, L2归一化)
+        CP->>Milvus: 存储服务向量<br/>Collection: ai_services<br/>Index: IVF_FLAT / HNSW<br/>Metric: COSINE
+        Milvus-->>CP: 向量索引更新成功
+    end
+
+    CP->>EnvoyDS: xDS 推送路由配置更新<br/>(新增 Route + Cluster + Endpoint)
+    Note over CP,EnvoyDS: Envoy 热加载配置，无需重启
+
+    EnvoyDS-->>CP: 配置应用成功
+
+    Note over EnvoyDS: 新注册的 AI 服务立即生效<br/>静态路由 + 语义路由均可发现
+
+    loop 健康检查持续监控
+        CP->>AISvc: 健康检查 (GET /health)
+        alt 健康检查失败
+            CP->>Nacos: 更新实例状态为 DOWN
+            CP->>EnvoyDS: xDS 推送摘除不健康实例
+        else 服务恢复
+            CP->>Nacos: 更新实例状态为 UP
+            CP->>EnvoyDS: xDS 推送恢复实例
+        end
+    end
