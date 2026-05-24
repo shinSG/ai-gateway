@@ -1,0 +1,20 @@
+flowchart TD
+    S1["1. Client (OpenAI SDK) → AI Gateway<br/>POST /v1/chat/completions"]
+    S2["2. Protocol Adapter 识别协议类型<br/>OpenAI Compatible Request"]
+    S3["3. Auth Pipeline<br/>API Key 验证 → 租户识别 → 权限校验"]
+    S4["4. Rate Limiter<br/>Token Bucket (租户级/用户级/模型级)"]
+    S5["5. Intelligent Router<br/>根据模型名 + 路由规则 → 目标模型服务"]
+    S6["6. Plugin Chain<br/>审计埋点 → 内容审核 → 请求改写"]
+    S7["7. Protocol Transform<br/>OpenAI → 目标模型协议 (如需)"]
+    S8["8. Backend Call<br/>Spring AI / LangChain4j → LLM Provider"]
+    S9["9. Response Plugin Chain<br/>脱敏 → Token 统计 → 审计"]
+    S10["10. Response<br/>Streaming/SSE → Client"]
+
+    S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> S8 --> S9 --> S10
+
+    style S1 fill:#e3f2fd,stroke:#1565c0
+    style S3 fill:#fce4ec,stroke:#c62828
+    style S4 fill:#fff3e0,stroke:#ef6c00
+    style S5 fill:#f3e5f5,stroke:#7b1fa2
+    style S8 fill:#e8f5e9,stroke:#2e7d32
+    style S10 fill:#c8e6c9,stroke:#388e3c

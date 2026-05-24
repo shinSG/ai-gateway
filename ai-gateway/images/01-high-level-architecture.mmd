@@ -1,0 +1,80 @@
+flowchart TD
+    subgraph Client["Client Layer 客户端层"]
+        LLM["LLM App<br/>(SDK)"]
+        IDE["Agent IDE<br/>(Claude Code)"]
+        MCP_C["MCP Client"]
+    end
+
+    subgraph DataPlane["AI Gateway (Data Plane) 数据面"]
+        subgraph PAL["Protocol Adapter Layer 协议适配层"]
+            REST["RESTful"]
+            MCP["MCP"]
+            A2A["A2A"]
+            ACP["ACP"]
+            GRPC["gRPC"]
+        end
+
+        subgraph IR["Intelligent Routing 智能路由"]
+            LB["负载均衡"]
+            CR["灰度路由"]
+            MR["模型路由"]
+        end
+
+        subgraph SAP["Security & Auth Pipeline 安全管道"]
+            AuthN["认证"]
+            AuthZ["鉴权"]
+            RL["限流"]
+            ADT["审计"]
+            DM["脱敏"]
+        end
+
+        subgraph PC["Plugin Chain 插件链"]
+            PT["协议转换"]
+            CF["内容过滤"]
+            SM["统计埋点"]
+        end
+    end
+
+    subgraph ControlPlane["AI Gateway Control Plane 控制面"]
+        Reg["Registry Center<br/>(Nacos 3.0)"]
+        Cfg["Config Center<br/>(Nacos 3.0)"]
+        Admin["Admin Console<br/>(Spring Boot)"]
+
+        subgraph Obs["Observability Stack 可观测"]
+            TRC["Tracing<br/>(OTLP)"]
+            MET["Metrics<br/>(Prometheus)"]
+            LOG["Logging<br/>(ELK)"]
+        end
+    end
+
+    subgraph Backend["Backend Services 后端服务"]
+        Agent["Agent<br/>Service"]
+        Skill["Skill<br/>Service"]
+        LLM_S["LLM Model<br/>Service"]
+        Tool["Tool<br/>Service"]
+        Plugin["Plugin<br/>Service"]
+        Data["Data/Vector<br/>Store"]
+    end
+
+    LLM -->|"RESTful"| REST
+    IDE -->|"A2A/ACP"| A2A
+    MCP_C -->|"MCP"| MCP
+    IDE -->|"gRPC/WS"| GRPC
+
+    REST --> IR
+    MCP --> IR
+    A2A --> IR
+    ACP --> IR
+    GRPC --> IR
+
+    IR --> SAP
+    SAP --> PC
+    PC --> Backend
+
+    DataPlane --> ControlPlane
+    ControlPlane --> Backend
+
+    style Client fill:#e3f2fd,stroke:#1565c0
+    style DataPlane fill:#fff3e0,stroke:#ef6c00
+    style ControlPlane fill:#f3e5f5,stroke:#7b1fa2
+    style Backend fill:#e8f5e9,stroke:#2e7d32

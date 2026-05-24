@@ -1,0 +1,14 @@
+flowchart TD
+    L1["传输层安全 TLS<br/>mTLS / TLS 1.3 / WAF"]
+    L2["认证层<br/>API Key / JWT / OAuth2 / OIDC / SAML"]
+    L3["鉴权层<br/>RBAC 按角色 / ABAC 按属性标签"]
+    L4["限流层<br/>QPM/TPM Token桶 / 并发数控制 / 滑动窗口"]
+    L5["内容安全<br/>敏感词过滤 / Prompt注入检测 / 越狱检测 / 脱敏"]
+
+    L1 --> L2 --> L3 --> L4 --> L5
+
+    style L1 fill:#fce4ec,stroke:#c62828
+    style L2 fill:#fff3e0,stroke:#ef6c00
+    style L3 fill:#e3f2fd,stroke:#1565c0
+    style L4 fill:#f3e5f5,stroke:#7b1fa2
+    style L5 fill:#e8f5e9,stroke:#2e7d32

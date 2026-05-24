@@ -1,0 +1,44 @@
+flowchart TD
+    CONSOLE["gateway-console<br/>Admin UI + API"]
+
+    CORE["gateway-core<br/>路由 / 过滤链"]
+    OBS["gateway-observability<br/>追踪 / 指标 / 告警"]
+    SEC["gateway-security<br/>认证 / 鉴权 / 限流 / 审计"]
+
+    PROTO["gateway-protocol<br/>协议适配 / 转换"]
+
+    REG["gateway-registry<br/>Nacos 3.0 注册发现"]
+
+    PLUGIN["gateway-plugin<br/>插件引擎 / Wasm 沙箱"]
+
+    subgraph AI["gateway-ai AI 引擎适配"]
+        SAI["Spring AI Adapter"]
+        LC4J["LangChain4j Adapter"]
+    end
+
+    AGENT["gateway-agent<br/>Agent 编排 / 记忆 / 多 Agent 协调"]
+
+    CONSOLE --> CORE
+    CONSOLE --> OBS
+    CONSOLE --> SEC
+
+    CORE --> OBS
+    CORE --> SEC
+    CORE --> PROTO
+
+    SEC --> PROTO
+
+    PROTO --> REG
+    REG --> PLUGIN
+    PLUGIN --> AI
+    AI --> AGENT
+
+    style CONSOLE fill:#fff9c4,stroke:#f9a825
+    style CORE fill:#e3f2fd,stroke:#1565c0
+    style OBS fill:#e8f5e9,stroke:#2e7d32
+    style SEC fill:#fce4ec,stroke:#c62828
+    style PROTO fill:#fff3e0,stroke:#ef6c00
+    style REG fill:#f3e5f5,stroke:#7b1fa2
+    style PLUGIN fill:#e0f7fa,stroke:#00838f
+    style AI fill:#fce4ec,stroke:#ad1457
+    style AGENT fill:#ede7f6,stroke:#4527a0

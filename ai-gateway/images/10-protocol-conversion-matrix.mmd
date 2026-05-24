@@ -1,0 +1,30 @@
+flowchart LR
+    subgraph Sources["来源协议"]
+        S1["RESTful"]
+        S2["MCP"]
+        S3["A2A"]
+        S4["ACP"]
+    end
+
+    subgraph Targets["目标协议"]
+        T1["RESTful"]
+        T2["MCP"]
+        T3["A2A"]
+        T4["ACP"]
+    end
+
+    S1 -->|"REST→MCP Tool"| T2
+    S1 -->|"REST→A2A Task"| T3
+    S1 -->|"REST→ACP"| T4
+    S2 -->|"MCP Tool→REST API"| T1
+    S2 -->|"MCP→A2A Agent"| T3
+    S2 -->|"MCP→ACP"| T4
+    S3 -->|"A2A→REST"| T1
+    S3 -->|"A2A→MCP"| T2
+    S3 -->|"A2A↔ACP"| T4
+    S4 -->|"ACP→REST"| T1
+    S4 -->|"ACP→MCP"| T2
+    S4 -->|"ACP↔A2A"| T3
+
+    style Sources fill:#e3f2fd,stroke:#1565c0
+    style Targets fill:#e8f5e9,stroke:#2e7d32

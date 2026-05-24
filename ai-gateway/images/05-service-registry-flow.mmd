@@ -1,0 +1,27 @@
+sequenceDiagram
+    participant Provider as 服务提供者
+    participant SDK as AI Gateway SDK
+    participant Nacos as Nacos 3.0 Server
+    participant Gateway as AI Gateway
+
+    Provider->>Provider: 1. 启动 → 自检 → 构建元数据
+
+    Provider->>SDK: 上报服务信息
+    SDK->>SDK: 采集协议端点
+    SDK->>SDK: 采集工具列表
+    SDK->>SDK: 采集模型信息
+    SDK->>SDK: 采集健康指标
+
+    SDK->>Nacos: 2. POST /nacos/v1/ns/instance<br/>+ metadata (Agent/Skill/Service/Plugin)
+
+    Nacos->>Nacos: 实例注册 + 元数据存储
+    Note over Nacos: 注册中心: 实例注册<br/>元数据中心: 详细元数据<br/>配置中心: AI 动态参数<br/>AI Registry: MCP Server 自动发现
+
+    Nacos-->>Gateway: 3. 推送服务变更事件
+
+    Gateway->>Gateway: 新服务上线 → 更新路由表
+    Gateway->>Gateway: 服务下线 → 剔除实例
+    Gateway->>Gateway: 元数据变更 → 更新协议信息
+    Gateway->>Gateway: 健康状态变更 → 调整权重
+
+    Gateway->>Nacos: 4. 订阅服务健康状态

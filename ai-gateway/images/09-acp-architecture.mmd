@@ -1,0 +1,22 @@
+flowchart TD
+    subgraph Gateway["AI Gateway ACP Layer"]
+        subgraph ADS["ACP Discovery Service"]
+            AD1["mDNS/DNS-SD 本地 Agent 发现"]
+            AD2["Nacos 3.0 远程 Agent 发现"]
+            AD3["统一 Agent 目录"]
+        end
+
+        subgraph ASM["ACP State Manager"]
+            AS1["会话状态机管理"]
+            AS2["任务生命周期追踪"]
+            AS3["状态持久化与恢复"]
+        end
+
+        subgraph ACN["ACP Content Negotiation"]
+            AN1["MIME 类型协商"]
+            AN2["结构化 / 非结构化内容路由"]
+            AN3["多模态内容适配"]
+        end
+    end
+
+    style Gateway fill:#fff3e0,stroke:#ef6c00

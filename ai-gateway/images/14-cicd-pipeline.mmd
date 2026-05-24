@@ -1,0 +1,35 @@
+flowchart TD
+    PUSH["Git Push → GitHub Actions / GitLab CI"]
+
+    subgraph Stage1["1. Build & Test 构建与测试"]
+        T1["mvn verify"]
+        T2["Unit Tests<br/>(JUnit 5 + Mockito)"]
+        T3["Integration Tests<br/>(Testcontainers)"]
+        T4["Security Scan<br/>(Trivy + Snyk)"]
+        T1 --> T2 --> T3 --> T4
+    end
+
+    subgraph Stage2["2. Package 打包"]
+        P1["mvn package -DskipTests"]
+        P2["docker build<br/>(GraalVM Native Image 可选)"]
+        P1 --> P2
+    end
+
+    subgraph Stage3["3. Push Image 推送镜像"]
+        R1["docker push<br/>→ Harbor / ACR / ECR"]
+    end
+
+    subgraph Stage4["4. Deploy 部署"]
+        D1["Dev: ArgoCD auto-sync"]
+        D2["Staging: Manual gate → Canary deploy"]
+        D3["Prod: Blue-Green / Rolling update"]
+        D1 --> D2 --> D3
+    end
+
+    PUSH --> Stage1 --> Stage2 --> Stage3 --> Stage4
+
+    style PUSH fill:#e3f2fd,stroke:#1565c0
+    style Stage1 fill:#fff9c4,stroke:#f9a825
+    style Stage2 fill:#fff3e0,stroke:#ef6c00
+    style Stage3 fill:#f3e5f5,stroke:#7b1fa2
+    style Stage4 fill:#e8f5e9,stroke:#2e7d32

@@ -1,0 +1,19 @@
+flowchart TD
+    CENTER["Nacos 3.0 服务实例<br/>metadata.protocols"]
+
+    subgraph Protocols["注册协议端点"]
+        P1["RESTful<br/>→ https://svc:8080/api/v1"]
+        P2["MCP_SSE<br/>→ https://svc:8080/mcp/sse"]
+        P3["A2A_JSONRPC<br/>→ https://svc:8080/a2a"]
+        P4["ACP_REST<br/>→ https://svc:8080/acp"]
+        P5["GRPC<br/>→ svc:9090"]
+    end
+
+    CENTER --> P1
+    CENTER --> P2
+    CENTER --> P3
+    CENTER --> P4
+    CENTER --> P5
+
+    style CENTER fill:#fff3e0,stroke:#ef6c00,stroke-width:3px
+    style Protocols fill:#e8f5e9,stroke:#2e7d32

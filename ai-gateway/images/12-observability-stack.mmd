@@ -1,0 +1,23 @@
+flowchart TD
+    subgraph Sources["遥测数据源"]
+        TRC["Traces<br/>(OTLP)"]
+        MET["Metrics<br/>(Prometheus)"]
+        LOG["Logs<br/>(OTLP/ELK)"]
+    end
+
+    COLLECTOR["OpenTelemetry Collector<br/>Span 关联 Client → Gateway → Backend<br/>AI 专用 Span: model/tokens/temperature<br/>Agent 执行轨迹: ReAct Loop/Tool Call"]
+
+    subgraph Backend["可观测后端"]
+        JAEGER["Jaeger / Tempo<br/>分布式追踪"]
+        PROM["Prometheus + Grafana<br/>指标与仪表盘"]
+        ELK["ELK / Loki<br/>日志聚合"]
+    end
+
+    Sources --> COLLECTOR
+    COLLECTOR --> JAEGER
+    COLLECTOR --> PROM
+    COLLECTOR --> ELK
+
+    style Sources fill:#e3f2fd,stroke:#1565c0
+    style COLLECTOR fill:#fff3e0,stroke:#ef6c00
+    style Backend fill:#e8f5e9,stroke:#2e7d32

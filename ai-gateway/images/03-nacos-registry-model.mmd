@@ -1,0 +1,31 @@
+flowchart LR
+    NS["Nacos 3.0 Namespace<br/>命名空间: ai-gateway-prod"]
+
+    subgraph Group["Group: AI-GATEWAY 分组"]
+        S1["Service: agent-weather-agent<br/>服务名"]
+        S2["Service: skill-code-interpreter<br/>服务名"]
+        S3["Service: plugin-rate-limiter<br/>服务名"]
+        S4["Service: model-gpt-4<br/>服务名"]
+    end
+
+    I1A["Instance: 192.168.1.10:8080<br/>metadata: type=agent, protocol=mcp"]
+    I1B["Instance: 192.168.1.11:8080<br/>metadata: type=agent, protocol=mcp"]
+    I2A["Instance: 192.168.1.20:8080<br/>metadata: type=skill, protocol=restful"]
+    I2B["Instance: 192.168.1.21:8080<br/>metadata: type=skill, protocol=restful"]
+    I3A["Instance: 192.168.1.30:8080<br/>metadata: type=plugin, protocol=restful"]
+    I4A["Instance: 192.168.1.40:8080<br/>metadata: type=service, protocol=openai"]
+
+    NS --> Group
+    S1 --> I1A
+    S1 --> I1B
+    S2 --> I2A
+    S2 --> I2B
+    S3 --> I3A
+    S4 --> I4A
+
+    style NS fill:#e3f2fd,stroke:#1565c0
+    style Group fill:#f3e5f5,stroke:#7b1fa2
+    style S1 fill:#c8e6c9,stroke:#388e3c
+    style S2 fill:#c8e6c9,stroke:#388e3c
+    style S3 fill:#c8e6c9,stroke:#388e3c
+    style S4 fill:#c8e6c9,stroke:#388e3c

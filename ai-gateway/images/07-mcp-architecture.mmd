@@ -1,0 +1,39 @@
+flowchart TD
+    CLIENTS["MCP Client<br/>Claude Code / Cursor / etc."]
+
+    subgraph Gateway["AI Gateway MCP Layer"]
+        subgraph SM["MCP Session Manager"]
+            SM1["SSE session 维护"]
+            SM2["SessionID 生成"]
+            SM3["Redis pub/sub 同步"]
+            SM4["会话亲和性"]
+        end
+
+        subgraph TR["MCP Tool Registry"]
+            TR1["自动发现 MCP Server"]
+            TR2["Tool 聚合与去重"]
+            TR3["Tool 版本管理"]
+        end
+
+        subgraph PC["MCP Protocol Converter"]
+            PC1["REST → MCP 转换"]
+            PC2["OpenAPI → ToolDesc"]
+            PC3["SSE ↔ Streamable HTTP"]
+            PC4["响应模板化"]
+        end
+    end
+
+    subgraph Backend["MCP Backend Services"]
+        MS1["MCP Server 1<br/>(Native MCP)"]
+        MS2["MCP Server 2<br/>(Native MCP)"]
+        MS3["REST → MCP<br/>(Converted)"]
+    end
+
+    CLIENTS -->|"SSE / Streamable HTTP"| Gateway
+    SM --> Backend
+    TR --> Backend
+    PC --> Backend
+
+    style CLIENTS fill:#e3f2fd,stroke:#1565c0
+    style Gateway fill:#fff3e0,stroke:#ef6c00
+    style Backend fill:#e8f5e9,stroke:#2e7d32

@@ -1,0 +1,33 @@
+flowchart TD
+    subgraph Gateway["AI Gateway A2A Layer"]
+        subgraph ACM["Agent Card Manager"]
+            AC1["自动生成 /.well-known/agent.json"]
+            AC2["聚合下游 Agent Card 生成网关级 Card"]
+            AC3["管理 Agent 技能的动态上下线"]
+        end
+
+        subgraph ATM["A2A Task Manager"]
+            AT1["Task 生命周期管理"]
+            AT2["submitted → working → completed/failed"]
+            AT3["Human-in-the-loop: input-required"]
+            AT4["长时任务支持 (秒→天)"]
+            AT5["Task 取消 / 状态查询"]
+        end
+
+        subgraph AMH["A2A Message Handler"]
+            AH1["JSON-RPC 2.0 消息路由"]
+            AH2["task/send (同步)"]
+            AH3["task/sendSubscribe (SSE 流式)"]
+            AH4["task/get (状态查询)"]
+            AH5["task/cancel (取消)"]
+        end
+
+        subgraph APB["A2A Protocol Bridge"]
+            AB1["A2A ↔ MCP 协议转换"]
+            AB2["A2A ↔ RESTful 协议转换"]
+            AB3["A2A ↔ ACP 协议转换"]
+            AB4["多协议 Agent 统一调度"]
+        end
+    end
+
+    style Gateway fill:#fff3e0,stroke:#ef6c00

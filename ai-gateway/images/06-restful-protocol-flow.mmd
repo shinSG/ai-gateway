@@ -1,0 +1,23 @@
+flowchart TD
+    A["Client Request<br/>HTTP POST /v1/chat/completions"]
+
+    B["RestProtocolAdapter.parse()<br/>解析 HTTP Method/Path/Headers/Body<br/>识别 OpenAI 兼容格式"]
+
+    C["AIGatewayMessage 统一模型<br/>role: user<br/>content: [{type: text, text: 'Hello'}]<br/>metadata: {model: gpt-4o, stream: true}"]
+
+    subgraph Pipeline["中间处理链"]
+        D1["认证"]
+        D2["限流"]
+        D3["路由"]
+        D4["内容审核"]
+    end
+
+    E["RestProtocolAdapter.write()<br/>AIGatewayMessage → HTTP Response<br/>支持 SSE streaming / JSON"]
+
+    F["Client Response"]
+
+    A --> B --> C --> Pipeline --> E --> F
+
+    style A fill:#e3f2fd,stroke:#1565c0
+    style C fill:#fff3e0,stroke:#ef6c00
+    style F fill:#e8f5e9,stroke:#2e7d32

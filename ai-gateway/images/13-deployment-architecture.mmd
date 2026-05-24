@@ -1,0 +1,42 @@
+flowchart TD
+    INET["外部流量 (Internet)"]
+    LB["Load Balancer<br/>K8s Service Type: LB"]
+
+    subgraph K8S["K8s Cluster"]
+        subgraph Pod["AI Gateway Pod (x3)"]
+            APP["Spring Boot App (WebFlux)<br/>+ Gateway Core"]
+            SIDECAR["Sidecar<br/>OpenTelemetry Agent<br/>+ Wasm Runtime"]
+            APP --- SIDECAR
+        end
+
+        subgraph Nacos["Nacos 3.0 Cluster (3 Nodes, HA)"]
+            MONGO["MongoDB<br/>分级存储"]
+            MYSQL["MySQL<br/>持久化"]
+            MONGO --- MYSQL
+        end
+
+        subgraph Redis["Redis Cluster"]
+            RS1["Session Store"]
+            RS2["Rate Limit Counter"]
+            RS3["Pub/Sub for MCP SSE"]
+        end
+
+        subgraph Obs["Observability Stack"]
+            OB1["Prometheus"]
+            OB2["Grafana"]
+            OB3["Jaeger/Tempo"]
+            OB4["ELK/Loki"]
+        end
+    end
+
+    INET --> LB --> Pod
+    Pod --> Nacos
+    Pod --> Redis
+    Pod --> Obs
+
+    style INET fill:#e3f2fd,stroke:#1565c0
+    style LB fill:#fff9c4,stroke:#f9a825
+    style Pod fill:#e8f5e9,stroke:#2e7d32
+    style Nacos fill:#f3e5f5,stroke:#7b1fa2
+    style Redis fill:#fce4ec,stroke:#c62828
+    style Obs fill:#fff3e0,stroke:#ef6c00
